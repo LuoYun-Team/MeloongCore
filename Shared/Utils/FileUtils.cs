@@ -64,12 +64,14 @@ public static class FileUtils {
         if (pathToShorten.Length <= 10) return fullName;
 
         // 缩短路径
-        var buffer = new StringBuilder(260);
-        if (GetShortPathNameW(pathToShorten, buffer, buffer.Capacity) == 0) return fullName;
-        return Path.Combine(buffer.ToString(), pathToKeep);
+        char[] buffer = new char[260];
+        int result = GetShortPathNameW(pathToShorten, buffer, buffer.Length);
+        if (result == 0) return fullName;
+        string shortPath = new(buffer, 0, result);
+        return Path.Combine(shortPath, pathToKeep);
     }
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-    private static extern int GetShortPathNameW(string lpszLongPath, StringBuilder lpszShortPath, int cchBuffer);
+    private static extern int GetShortPathNameW(string lpszLongPath, [Out] char[] buffer, int cchBuffer);
 
     #endregion
 

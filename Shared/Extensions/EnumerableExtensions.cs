@@ -1,4 +1,6 @@
-﻿namespace MeloongCore.Extensions;
+﻿using System.Globalization;
+
+namespace MeloongCore.Extensions;
 public static class EnumerableExtensions {
 
     #region Distinct
@@ -37,16 +39,16 @@ public static class EnumerableExtensions {
     /// 选择所有最大值对应的对象。
     /// 若没有元素则返回空列表。
     /// </summary>
-    public static List<T> MaxByAll<T, C>(this IEnumerable<T> source, Func<T, C> selector) where C : IComparable<C> {
-        var results = new List<T>();
+    public static List<TKey> MaxByAll<TKey, TValue>(this IEnumerable<TKey> source, Func<TKey, TValue> selector) where TValue : IComparable<TValue> {
+        var results = new List<TKey>();
         using var enumerator = source.GetEnumerator();
         if (!enumerator.MoveNext()) return results;
-        T maxItem = enumerator.Current;
-        C maxValue = selector(maxItem);
+        TKey maxItem = enumerator.Current;
+        TValue maxValue = selector(maxItem);
         results.Add(maxItem);
         while (enumerator.MoveNext()) {
-            T currentItem = enumerator.Current;
-            C currentValue = selector(currentItem);
+            TKey currentItem = enumerator.Current;
+            TValue currentValue = selector(currentItem);
             int comparisonResult = currentValue.CompareTo(maxValue);
             if (comparisonResult > 0) {
                 maxValue = currentValue;
@@ -62,16 +64,16 @@ public static class EnumerableExtensions {
     /// 选择所有最小值对应的对象。
     /// 若没有元素则返回空列表。
     /// </summary>
-    public static List<T> MinByAll<T, C>(this IEnumerable<T> source, Func<T, C> selector) where C : IComparable<C> {
-        var results = new List<T>();
+    public static List<TKey> MinByAll<TKey, TValue>(this IEnumerable<TKey> source, Func<TKey, TValue> selector) where TValue : IComparable<TValue> {
+        var results = new List<TKey>();
         using var enumerator = source.GetEnumerator();
         if (!enumerator.MoveNext()) return results;
-        T minItem = enumerator.Current;
-        C minValue = selector(minItem);
+        TKey minItem = enumerator.Current;
+        TValue minValue = selector(minItem);
         results.Add(minItem);
         while (enumerator.MoveNext()) {
-            T currentItem = enumerator.Current;
-            C currentValue = selector(currentItem);
+            TKey currentItem = enumerator.Current;
+            TValue currentValue = selector(currentItem);
             int comparisonResult = currentValue.CompareTo(minValue);
             if (comparisonResult < 0) {
                 minValue = currentValue;
@@ -88,13 +90,13 @@ public static class EnumerableExtensions {
     /// 选择最大值对应的对象。
     /// 若没有元素则返回 null。
     /// </summary>
-    public static T? MaxBy<T, C>(this IEnumerable<T> source, Func<T, C> selector) where C : IComparable<C> {
+    public static TKey? MaxBy<TKey, TValue>(this IEnumerable<TKey> source, Func<TKey, TValue> selector) where TValue : IComparable<TValue> {
         using var enumerator = source.GetEnumerator();
         if (!enumerator.MoveNext()) return default;
-        T maxItem = enumerator.Current;
-        C maxValue = selector(maxItem);
+        TKey maxItem = enumerator.Current;
+        TValue maxValue = selector(maxItem);
         while (enumerator.MoveNext()) {
-            C value = selector(enumerator.Current);
+            TValue value = selector(enumerator.Current);
             if (value.CompareTo(maxValue) <= 0) continue;
             maxItem = enumerator.Current;
             maxValue = value;
@@ -105,13 +107,13 @@ public static class EnumerableExtensions {
     /// 选择最小值对应的对象。
     /// 若没有元素则返回 null。
     /// </summary>
-    public static T? MinBy<T, C>(this IEnumerable<T> List, Func<T, C> Selector) where C : IComparable<C> {
+    public static TKey? MinBy<TKey, TValue>(this IEnumerable<TKey> List, Func<TKey, TValue> Selector) where TValue : IComparable<TValue> {
         using var enumerator = List.GetEnumerator();
         if (!enumerator.MoveNext()) { return default; }
-        T minItem = enumerator.Current;
-        C minValue = Selector(minItem);
+        TKey minItem = enumerator.Current;
+        TValue minValue = Selector(minItem);
         while (enumerator.MoveNext()) {
-            C value = Selector(enumerator.Current);
+            TValue value = Selector(enumerator.Current);
             if (value.CompareTo(minValue) >= 0) { continue; }
             minItem = enumerator.Current;
             minValue = value;
@@ -204,7 +206,7 @@ public static class EnumerableExtensions {
     /// </remarks>
     public static IEnumerable<T> Flags<T>(this T value) where T : struct, Enum {
         foreach (var element in Enum.GetValues(typeof(T)).Cast<T>().Distinct()) {
-            var number = Convert.ToInt64(element);
+            var number = Convert.ToInt64(element, CultureInfo.InvariantCulture);
             if (number == 0 || (number & (number - 1)) != 0) continue; // 跳过 0 和非 2 的幂的值
             if (value.HasFlag(element)) yield return element;
         }

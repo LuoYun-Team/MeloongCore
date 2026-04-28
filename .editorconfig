@@ -1,0 +1,5 @@
+
+[*.{cs,vb}]
+
+# CA1710: 标识符应具有正确的后缀
+dotnet_diagnostic.CA1710.severity = none
