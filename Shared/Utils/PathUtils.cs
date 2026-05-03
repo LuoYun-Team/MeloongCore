@@ -34,13 +34,13 @@ public static class PathUtils {
         string pathToKeep = "";
         string pathToShorten = fullName;
         if (fullName.EndsWithF(".jar", true)) keepFileName = true; // jar 文件的文件名需要保留原样，否则会导致 Forge 1.20.1 无法通过文件名识别模块名
-        if (keepFileName && File.Exists(fullName)) {
+        if (keepFileName && FileUtils.Exists(fullName)) {
             pathToKeep = Path.GetFileName(fullName);
             pathToShorten = Path.GetDirectoryName(fullName);
         }
 
         // 逐级向上寻找已存在的文件夹，将不存在的部分挪到 suffix，不再缩短
-        while (!Directory.Exists(pathToShorten) && !File.Exists(pathToShorten)) { // 如果路径不存在
+        while (!DirectoryUtils.Exists(pathToShorten) && !FileUtils.Exists(pathToShorten)) { // 如果路径不存在
             string parentPath = Path.GetDirectoryName(pathToShorten);
             if (string.IsNullOrEmpty(parentPath) || parentPath == pathToShorten) return fullName; // 已经到达根目录，全都不存在，直接返回
             pathToKeep = Path.Combine(Path.GetFileName(pathToShorten), pathToKeep);

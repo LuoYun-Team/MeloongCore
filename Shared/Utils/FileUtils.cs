@@ -40,4 +40,9 @@ public static class FileUtils {
     /// </summary>
     public static void Delete(string filePath) => File.Delete(PathUtils.ToLongPath(filePath));
 
+    /// <summary>
+    /// 确定指定的文件是否存在。
+    /// </summary>
+    public static bool Exists(string filePath) => File.Exists(PathUtils.ToLongPath(filePath));
+
 }

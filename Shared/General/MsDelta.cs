@@ -11,8 +11,8 @@ public static class MsDelta {
     /// <exception cref="FileNotFoundException" />
     /// <exception cref="Win32Exception" />
     public static void Create(string oldFilePath, string newFilePath, string deltaFilePath) {
-        if (!File.Exists(oldFilePath)) throw new FileNotFoundException($"旧文件不存在：{oldFilePath}", oldFilePath);
-        if (!File.Exists(newFilePath)) throw new FileNotFoundException($"新文件不存在：{newFilePath}", newFilePath);
+        if (!FileUtils.Exists(oldFilePath)) throw new FileNotFoundException($"旧文件不存在：{oldFilePath}", oldFilePath);
+        if (!FileUtils.Exists(newFilePath)) throw new FileNotFoundException($"新文件不存在：{newFilePath}", newFilePath);
         DirectoryUtils.Create(deltaFilePath, isFilePath: true);
         // fileTypeSet：https://learn.microsoft.com/en-us/previous-versions/bb417345(v=msdn.10)?redirectedfrom=MSDN#file-type-sets (15L: DELTA_FILE_TYPE_SET_EXECUTABLES)
         // 131072L: IgnoreFileSizeLimit, 32u: Crc32
@@ -27,8 +27,8 @@ public static class MsDelta {
     /// <exception cref="FileNotFoundException" />
     /// <exception cref="Win32Exception" />
     public static void Apply(string oldFilePath, string deltaFilePath, string newFilePath) {
-        if (!File.Exists(oldFilePath)) throw new FileNotFoundException($"旧文件不存在：{oldFilePath}", oldFilePath);
-        if (!File.Exists(deltaFilePath)) throw new FileNotFoundException($"补丁文件不存在：{deltaFilePath}", deltaFilePath);
+        if (!FileUtils.Exists(oldFilePath)) throw new FileNotFoundException($"旧文件不存在：{oldFilePath}", oldFilePath);
+        if (!FileUtils.Exists(deltaFilePath)) throw new FileNotFoundException($"补丁文件不存在：{deltaFilePath}", deltaFilePath);
         DirectoryUtils.Create(newFilePath, isFilePath: true);
         // 1L: AllowLegacy
         if (!ApplyDelta(1L, PathUtils.ToLongPath(oldFilePath), PathUtils.ToLongPath(deltaFilePath), PathUtils.ToLongPath(newFilePath)))
