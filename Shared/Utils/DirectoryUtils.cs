@@ -15,4 +15,9 @@ public static class DirectoryUtils {
     /// </summary>
     public static bool Exists(string path) => Directory.Exists(PathUtils.ToLongPath(path));
 
+    /// <summary>
+    /// 创建 <see cref="DirectoryInfo"/> 对象。
+    /// </summary>
+    public static DirectoryInfo GetInfo(string path) => new(PathUtils.ToLongPath(path));
+
 }

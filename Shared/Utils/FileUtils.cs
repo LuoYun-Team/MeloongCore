@@ -45,4 +45,9 @@ public static class FileUtils {
     /// </summary>
     public static bool Exists(string filePath) => File.Exists(PathUtils.ToLongPath(filePath));
 
+    /// <summary>
+    /// 创建 <see cref="FileInfo"/> 对象。
+    /// </summary>
+    public static FileInfo GetInfo(string path) => new(PathUtils.ToLongPath(path));
+
 }
