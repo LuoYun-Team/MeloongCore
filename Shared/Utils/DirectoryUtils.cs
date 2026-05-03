@@ -10,4 +10,9 @@ public static class DirectoryUtils {
         Directory.CreateDirectory(PathUtils.ToLongPath(path));
     }
 
+    /// <summary>
+    /// 判断文件夹是否存在。
+    /// </summary>
+    public static bool Exists(string path) => Directory.Exists(PathUtils.ToLongPath(path));
+
 }

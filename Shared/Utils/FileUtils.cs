@@ -35,4 +35,9 @@ public static class FileUtils {
 
     #endregion
 
+    /// <summary>
+    /// 删除文件。
+    /// </summary>
+    public static void Delete(string filePath) => File.Delete(PathUtils.ToLongPath(filePath));
+
 }
