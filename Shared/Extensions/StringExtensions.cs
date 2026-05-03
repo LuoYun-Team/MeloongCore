@@ -14,12 +14,28 @@ public static class StringExtensions {
         return value.StartsWith(prefix, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
     }
     /// <summary>
+    /// 高速的 StartsWith。
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool StartsWithF(this string? value, char prefix, bool ignoreCase = false) {
+        if (value is null) return false;
+        return value.StartsWith(prefix.ToString(), ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    }
+    /// <summary>
     /// 高速的 EndsWith。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool EndsWithF(this string? value, string suffix, bool ignoreCase = false) {
         if (value is null) return false;
         return value.EndsWith(suffix, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    }
+    /// <summary>
+    /// 高速的 EndsWith。
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool EndsWithF(this string? value, char suffix, bool ignoreCase = false) {
+        if (value is null) return false;
+        return value.EndsWith(suffix.ToString(), ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
     }
 
     /// <summary>
