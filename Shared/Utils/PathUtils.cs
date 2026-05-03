@@ -59,13 +59,14 @@ public static class PathUtils {
     private static extern int GetShortPathNameW(string lpszLongPath, [Out] char[] buffer, int cchBuffer);
 
     /// <summary>
-    /// 将路径转换为以 \\?\ 开头的长路径格式。
-    /// 这也会去除路径末尾的文件夹分隔符。
+    /// 将路径转换为以 \\?\ 开头的标准长路径格式。
+    /// 这会去除路径末尾的分隔符，且将 / 替换为 \。
     /// </summary>
     public static string ToLongPath(string path) {
         if (string.IsNullOrWhiteSpace(path)) return path;
         if (path.StartsWithF(@"\\")) return path; // 已有长路径前缀
-        return $@"\\?\{WithoutSeparator(path)}"; // API 要求不包含分隔符
+        path = WithoutSeparator(path).Replace('/', '\\'); // API 要求这个格式……
+        return $@"\\?\{path}";
     }
 
     #endregion
