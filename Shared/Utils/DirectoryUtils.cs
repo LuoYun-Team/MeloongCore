@@ -13,21 +13,24 @@ public static class DirectoryUtils {
     /// <summary>
     /// 判断文件夹是否存在。
     /// </summary>
-    public static bool Exists(string path) => 
-        Directory.Exists(PathUtils.WithLongPath(path));
+    public static bool Exists(string path) {
+        return Directory.Exists(PathUtils.WithLongPath(path));
+    }
 
     /// <summary>
     /// 创建 <see cref="DirectoryInfo"/> 对象。
     /// </summary>
-    public static DirectoryInfo GetInfo(string path) => 
-        new(PathUtils.WithLongPath(path));
+    public static DirectoryInfo GetInfo(string path) {
+        return new(PathUtils.WithLongPath(path));
+    }
 
     /// <summary>
     /// 返回指定路径下的所有文件，不以 \\?\ 开头。
     /// </summary>
     public static IEnumerable<string> GetFiles(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!Exists(path)) return [];
-        return Directory.EnumerateFiles(PathUtils.WithLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories).Select(PathUtils.WithoutLongPath);
+        return Directory.EnumerateFiles(PathUtils.WithLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories).
+            Select(PathUtils.WithoutLongPath);
     }
 
     /// <summary>
@@ -35,7 +38,8 @@ public static class DirectoryUtils {
     /// </summary>
     public static IEnumerable<string> GetDirectories(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!Exists(path)) return [];
-        return Directory.EnumerateDirectories(PathUtils.WithLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories).Select(PathUtils.WithoutLongPath);
+        return Directory.EnumerateDirectories(PathUtils.WithLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories).
+            Select(PathUtils.WithoutLongPath);
     }
 
     /// <summary>

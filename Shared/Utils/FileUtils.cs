@@ -38,7 +38,6 @@ public static class FileUtils {
     /// 如果文件或文件夹不存在，则会自动创建。若已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, Stream stream) {
-        DirectoryUtils.Create(filePath, isFilePath: true);
         using FileStream fileStream = OpenCreate(PathUtils.WithLongPath(filePath));
         if (stream.CanSeek && stream.Position != 0) stream.Seek(0, SeekOrigin.Begin);
         stream.CopyTo(fileStream);
@@ -131,8 +130,9 @@ public static class FileUtils {
     /// <summary>
     /// 打开该文件的只读 <see cref="FileStream"/>。
     /// </summary>
-    public static FileStream OpenRead(string filePath) =>
-        new(PathUtils.WithLongPath(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+    public static FileStream OpenRead(string filePath) {
+        return new(PathUtils.WithLongPath(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+    }
 
     /// <summary>
     /// 在指定路径创建文件，并打开 <see cref="FileStream"/>。
@@ -147,14 +147,16 @@ public static class FileUtils {
     /// <summary>
     /// 确定指定的文件是否存在。
     /// </summary>
-    public static bool Exists(string filePath) => 
-        File.Exists(PathUtils.WithLongPath(filePath));
+    public static bool Exists(string filePath) {
+        return File.Exists(PathUtils.WithLongPath(filePath));
+    }
 
     /// <summary>
     /// 创建 <see cref="FileInfo"/> 对象。
     /// </summary>
-    public static FileInfo GetInfo(string path) => 
-        new(PathUtils.WithLongPath(path));
+    public static FileInfo GetInfo(string path) {
+        return new(PathUtils.WithLongPath(path));
+    }
 
     /// <summary>
     /// 复制文件。

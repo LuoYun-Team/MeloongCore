@@ -5,6 +5,8 @@ public readonly struct OneOf<T0, T1> {
     private readonly T1? _value1;
     public static implicit operator OneOf<T0, T1>(T0 value) => new(0, value, default);
     public static implicit operator OneOf<T0, T1>(T1 value) => new(1, default, value);
+    public static implicit operator T0(OneOf<T0, T1> value) => value.As<T0>();
+    public static implicit operator T1(OneOf<T0, T1> value) => value.As<T1>();
     private OneOf(int index, T0? value0, T1? value1) {
         _index = index;
         _value0 = value0;
@@ -51,6 +53,9 @@ public readonly struct OneOf<T0, T1, T2> {
     public static implicit operator OneOf<T0, T1, T2>(T0 value) => new(0, value, default, default);
     public static implicit operator OneOf<T0, T1, T2>(T1 value) => new(1, default, value, default);
     public static implicit operator OneOf<T0, T1, T2>(T2 value) => new(2, default, default, value);
+    public static implicit operator T0(OneOf<T0, T1, T2> value) => value.As<T0>();
+    public static implicit operator T1(OneOf<T0, T1, T2> value) => value.As<T1>();
+    public static implicit operator T2(OneOf<T0, T1, T2> value) => value.As<T2>();
     private OneOf(int index, T0? value0, T1? value1, T2? value2) {
         _index = index;
         _value0 = value0;
