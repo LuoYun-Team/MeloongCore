@@ -7,35 +7,35 @@ public static class DirectoryUtils {
     /// </summary>
     public static void Create(string path, bool isFilePath = false) {
         if (isFilePath) path = Path.GetDirectoryName(path);
-        Directory.CreateDirectory(PathUtils.ToLongPath(path));
+        Directory.CreateDirectory(PathUtils.WithLongPath(path));
     }
 
     /// <summary>
     /// 判断文件夹是否存在。
     /// </summary>
     public static bool Exists(string path) => 
-        Directory.Exists(PathUtils.ToLongPath(path));
+        Directory.Exists(PathUtils.WithLongPath(path));
 
     /// <summary>
     /// 创建 <see cref="DirectoryInfo"/> 对象。
     /// </summary>
     public static DirectoryInfo GetInfo(string path) => 
-        new(PathUtils.ToLongPath(path));
+        new(PathUtils.WithLongPath(path));
 
     /// <summary>
-    /// 返回指定路径下的所有文件。
+    /// 返回指定路径下的所有文件，不以 \\?\ 开头。
     /// </summary>
     public static IEnumerable<string> GetFiles(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!Exists(path)) return [];
-        return Directory.EnumerateFiles(PathUtils.ToLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories);
+        return Directory.EnumerateFiles(PathUtils.WithLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories).Select(PathUtils.WithoutLongPath);
     }
 
     /// <summary>
-    /// 返回指定路径下的所有文件夹，不以分隔符结尾。
+    /// 返回指定路径下的所有文件夹，不以分隔符结尾，不以 \\?\ 开头。
     /// </summary>
     public static IEnumerable<string> GetDirectories(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!Exists(path)) return [];
-        return Directory.EnumerateDirectories(PathUtils.ToLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories);
+        return Directory.EnumerateDirectories(PathUtils.WithLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories).Select(PathUtils.WithoutLongPath);
     }
 
     /// <summary>
@@ -44,7 +44,7 @@ public static class DirectoryUtils {
     /// </summary>
     public static bool IsEmpty(string path) {
         if (!Exists(path)) return true;
-        return !Directory.EnumerateFileSystemEntries(PathUtils.ToLongPath(path)).Any();
+        return !Directory.EnumerateFileSystemEntries(PathUtils.WithLongPath(path)).Any();
     }
 
     /// <summary>
@@ -53,21 +53,17 @@ public static class DirectoryUtils {
     public static void Move(string sourceDirName, string destDirName) {
         if (!Exists(sourceDirName)) return;
         Create(destDirName);
-        Directory.Move(PathUtils.ToLongPath(sourceDirName), PathUtils.ToLongPath(destDirName));
+        Directory.Move(PathUtils.WithLongPath(sourceDirName), PathUtils.WithLongPath(destDirName));
     }
 
     /// <summary>
     /// 删除文件夹。
     /// </summary>
     public static void Delete(string dirPath, bool toRecycleBin = false) {
-        dirPath = PathUtils.ToLongPath(dirPath);
         if (toRecycleBin) {
-            Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(dirPath,
-                Microsoft.VisualBasic.FileIO.UIOption.AllDialogs, 
-                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin, 
-                Microsoft.VisualBasic.FileIO.UICancelOption.ThrowException);
+            if (Exists(dirPath)) FileUtils.DeleteToRecycleBin(dirPath);
         } else {
-            Directory.Delete(dirPath);
+            Directory.Delete(PathUtils.WithLongPath(dirPath));
         }
     }
 }

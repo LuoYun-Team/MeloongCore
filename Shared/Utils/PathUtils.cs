@@ -27,8 +27,9 @@ public static class PathUtils {
     /// 若输入的是文件夹路径，不保证其结尾是否有文件夹分隔符。
     /// </summary>
     public static string ToShortPath(string fullName, bool keepFileName = false) {
-        if (string.IsNullOrEmpty(fullName) || fullName.Length <= 200) return fullName;
-        fullName = fullName.Replace('/', '\\');
+        if (string.IsNullOrEmpty(fullName)) return fullName;
+        fullName = PathUtils.WithoutLongPath( fullName.Replace('/', '\\'));
+        if (fullName.Length <= 200) return fullName;
 
         // 保留文件名
         string pathToKeep = "";
@@ -62,12 +63,18 @@ public static class PathUtils {
     /// 将路径转换为以 \\?\ 开头的标准长路径格式。
     /// 这会去除路径末尾的分隔符，且将 / 替换为 \。
     /// </summary>
-    public static string ToLongPath(string path) {
+    public static string WithLongPath(string path) {
         if (string.IsNullOrWhiteSpace(path)) return path;
         if (path.StartsWithF(@"\\")) return path; // 已有长路径前缀
         path = WithoutSeparator(path).Replace('/', '\\'); // API 要求这个格式……
         return $@"\\?\{path}";
     }
+
+    /// <summary>
+    /// 去除路径开头的 \\?\。
+    /// </summary>
+    public static string WithoutLongPath(string path) =>
+        path.AfterLast(@"\\?\");
 
     #endregion
 
