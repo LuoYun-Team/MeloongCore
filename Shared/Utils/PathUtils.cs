@@ -26,7 +26,7 @@ public static class PathUtils {
     /// 若路径较长，则尽量将其转换为短路径。
     /// 若输入的是文件夹路径，不保证其结尾是否有文件夹分隔符。
     /// </summary>
-    public static string Shorten(string fullName, bool keepFileName = false) {
+    public static string ToShortPath(string fullName, bool keepFileName = false) {
         if (string.IsNullOrEmpty(fullName) || fullName.Length <= 200) return fullName;
         fullName = fullName.Replace('/', '\\');
 

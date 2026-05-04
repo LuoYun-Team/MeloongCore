@@ -32,6 +32,7 @@ public static class DirectoryUtils {
 
     /// <summary>
     /// 返回指定路径下的所有文件夹。
+    /// 路径不以分隔符结尾。
     /// </summary>
     public static IEnumerable<string> EnumerateDirectories(string path, string searchPattern = "*", bool topDirectoryOnly = false) {
         if (!Exists(path)) return [];
