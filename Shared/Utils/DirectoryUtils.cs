@@ -25,16 +25,15 @@ public static class DirectoryUtils {
     /// <summary>
     /// 返回指定路径下的所有文件。
     /// </summary>
-    public static IEnumerable<string> EnumerateFiles(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
+    public static IEnumerable<string> GetFiles(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!Exists(path)) return [];
         return Directory.EnumerateFiles(PathUtils.ToLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories);
     }
 
     /// <summary>
-    /// 返回指定路径下的所有文件夹。
-    /// 路径不以分隔符结尾。
+    /// 返回指定路径下的所有文件夹，不以分隔符结尾。
     /// </summary>
-    public static IEnumerable<string> EnumerateDirectories(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
+    public static IEnumerable<string> GetDirectories(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!Exists(path)) return [];
         return Directory.EnumerateDirectories(PathUtils.ToLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories);
     }
