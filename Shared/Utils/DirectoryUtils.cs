@@ -25,7 +25,7 @@ public static class DirectoryUtils {
     /// <summary>
     /// 返回指定路径下的所有文件。
     /// </summary>
-    public static IEnumerable<string> EnumerateFiles(string path, string searchPattern = "*", bool topDirectoryOnly = false) {
+    public static IEnumerable<string> EnumerateFiles(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!Exists(path)) return [];
         return Directory.EnumerateFiles(PathUtils.ToLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories);
     }
@@ -34,8 +34,26 @@ public static class DirectoryUtils {
     /// 返回指定路径下的所有文件夹。
     /// 路径不以分隔符结尾。
     /// </summary>
-    public static IEnumerable<string> EnumerateDirectories(string path, string searchPattern = "*", bool topDirectoryOnly = false) {
+    public static IEnumerable<string> EnumerateDirectories(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!Exists(path)) return [];
         return Directory.EnumerateDirectories(PathUtils.ToLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories);
+    }
+
+    /// <summary>
+    /// 该文件夹是否为空。
+    /// 如果文件夹不存在，也返回 true。
+    /// </summary>
+    public static bool IsEmpty(string path) {
+        if (!Exists(path)) return true;
+        return !Directory.EnumerateFileSystemEntries(PathUtils.ToLongPath(path)).Any();
+    }
+
+    /// <summary>
+    /// 剪切文件夹。
+    /// </summary>
+    public static void Move(string sourceDirName, string destDirName) {
+        if (!Exists(sourceDirName)) return;
+        Create(destDirName);
+        Directory.Move(PathUtils.ToLongPath(sourceDirName), PathUtils.ToLongPath(destDirName));
     }
 }
