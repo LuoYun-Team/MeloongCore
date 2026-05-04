@@ -38,16 +38,32 @@ public static class FileUtils {
     /// <summary>
     /// 删除文件。
     /// </summary>
-    public static void Delete(string filePath) => File.Delete(PathUtils.ToLongPath(filePath));
+    public static void Delete(string filePath) => 
+        File.Delete(PathUtils.ToLongPath(filePath));
 
     /// <summary>
     /// 确定指定的文件是否存在。
     /// </summary>
-    public static bool Exists(string filePath) => File.Exists(PathUtils.ToLongPath(filePath));
+    public static bool Exists(string filePath) => 
+        File.Exists(PathUtils.ToLongPath(filePath));
 
     /// <summary>
     /// 创建 <see cref="FileInfo"/> 对象。
     /// </summary>
-    public static FileInfo GetInfo(string path) => new(PathUtils.ToLongPath(path));
+    public static FileInfo GetInfo(string path) => 
+        new(PathUtils.ToLongPath(path));
 
+    /// <summary>
+    /// 打开该文件的只读 <see cref="FileStream"/>。
+    /// </summary>
+    public static FileStream OpenRead(string filePath) => 
+        new(PathUtils.ToLongPath(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+
+    /// <summary>
+    /// 在指定路径创建文件，并打开 <see cref="FileStream"/>。
+    /// </summary>
+    public static FileStream OpenCreate(string filePath) {
+        DirectoryUtils.Create(filePath, isFilePath: true);
+        return new(PathUtils.ToLongPath(filePath), FileMode.Create);
+    }
 }
