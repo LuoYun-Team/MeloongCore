@@ -65,8 +65,17 @@ public static class FileUtils {
     /// <summary>
     /// 删除文件。
     /// </summary>
-    public static void Delete(string filePath) => 
-        File.Delete(PathUtils.ToLongPath(filePath));
+    public static void Delete(string filePath, bool toRecycleBin = false) {
+        filePath = PathUtils.ToLongPath(filePath);
+        if (toRecycleBin) {
+            Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(filePath,
+                Microsoft.VisualBasic.FileIO.UIOption.AllDialogs,
+                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin,
+                Microsoft.VisualBasic.FileIO.UICancelOption.ThrowException);
+        } else {
+            File.Delete(filePath);
+        }
+    }
 
     /// <summary>
     /// 确定指定的文件是否存在。

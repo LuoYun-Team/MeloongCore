@@ -25,6 +25,7 @@
 
 	<ItemGroup>
 	  <Reference Include="System.ServiceModel" />
+	  <Reference Include="Microsoft.VisualBasic" />
 	</ItemGroup>
 
 	<ItemGroup>

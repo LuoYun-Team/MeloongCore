@@ -55,4 +55,19 @@ public static class DirectoryUtils {
         Create(destDirName);
         Directory.Move(PathUtils.ToLongPath(sourceDirName), PathUtils.ToLongPath(destDirName));
     }
+
+    /// <summary>
+    /// 删除文件夹。
+    /// </summary>
+    public static void Delete(string dirPath, bool toRecycleBin = false) {
+        dirPath = PathUtils.ToLongPath(dirPath);
+        if (toRecycleBin) {
+            Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(dirPath,
+                Microsoft.VisualBasic.FileIO.UIOption.AllDialogs, 
+                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin, 
+                Microsoft.VisualBasic.FileIO.UICancelOption.ThrowException);
+        } else {
+            Directory.Delete(dirPath);
+        }
+    }
 }
