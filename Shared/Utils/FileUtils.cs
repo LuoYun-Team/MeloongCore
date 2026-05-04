@@ -1,4 +1,4 @@
-﻿using System.Runtime.ExceptionServices;
+﻿using System.IO.Compression;
 
 namespace MeloongCore;
 public static class FileUtils {
@@ -38,7 +38,7 @@ public static class FileUtils {
     /// 如果文件或文件夹不存在，则会自动创建。若已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, Stream stream) {
-        using FileStream fileStream = OpenCreate(PathUtils.WithLongPath(filePath));
+        using FileStream fileStream = CreateAsStream(PathUtils.WithLongPath(filePath));
         if (stream.CanSeek && stream.Position != 0) stream.Seek(0, SeekOrigin.Begin);
         stream.CopyTo(fileStream);
     }
@@ -84,8 +84,8 @@ public static class FileUtils {
         if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA) {
             Run(target);
         } else {
-            ExceptionDispatchInfo? internalEx = null; // 捕获内部异常
-            var thread = new Thread(() => { try { Run(target); } catch (Exception ex) { internalEx = ExceptionDispatchInfo.Capture(ex); } });
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo? internalEx = null; // 捕获内部异常
+            var thread = new Thread(() => { try { Run(target); } catch (Exception ex) { internalEx = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex); } });
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
             thread.Join();
@@ -130,16 +130,87 @@ public static class FileUtils {
     /// <summary>
     /// 打开该文件的只读 <see cref="FileStream"/>。
     /// </summary>
-    public static FileStream OpenRead(string filePath) {
+    public static FileStream ReadAsStream(string filePath) {
         return new(PathUtils.WithLongPath(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
     }
 
     /// <summary>
     /// 在指定路径创建文件，并打开 <see cref="FileStream"/>。
     /// </summary>
-    public static FileStream OpenCreate(string filePath) {
+    public static FileStream CreateAsStream(string filePath) {
         DirectoryUtils.Create(filePath, isFilePath: true);
         return new(PathUtils.WithLongPath(filePath), FileMode.Create);
+    }
+
+    #endregion
+
+    #region 压缩包
+
+    /// <summary>
+    /// 尝试根据后缀名判断文件种类并解压文件，支持 gz 与 zip，会尝试将 jar 以 zip 方式解压。
+    /// 会自动创建文件夹。会覆盖已有文件，但不会删除多余文件。
+    /// 解压时会先尝试 UTF8 编码，失败后换用 GB18030。
+    /// </summary>
+    public static void ExtractToDirectory(string compressionFile, string outputDirectory, Action<double>? progressIncrementHandler = null) {
+        compressionFile = PathUtils.WithLongPath(compressionFile);
+        DirectoryUtils.Create(outputDirectory);
+        // 解压 gz（gz 不需要考虑编码）
+        if (compressionFile.EndsWithF(".gz", true)) {
+            using var stream = new GZipStream(FileUtils.ReadAsStream(compressionFile), CompressionMode.Decompress);
+            FileUtils.Write(Path.Combine(outputDirectory, Path.GetFileNameWithoutExtension(compressionFile)), stream);
+            return;
+        }
+        // 解压 zip
+        void ExtractWithEncoding(Encoding encoding) {
+            using var archive = ZipFile.Open(compressionFile, ZipArchiveMode.Read, encoding);
+            int entryCount = archive.Entries.Count;
+            foreach (var entry in archive.Entries) {
+                if (progressIncrementHandler != null && entryCount > 0) progressIncrementHandler(1.0 / entryCount);
+                if (string.IsNullOrEmpty(entry.Name)) continue; // 跳过文件夹条目（ZipArchive 会将文件夹也作为一个 entry，但它们的 Name 为空）
+                // ZipSlip 修复
+                string outputFilePath = Path.GetFullPath(Path.Combine(outputDirectory, entry.FullName));
+                if (!outputFilePath.StartsWithF(PathUtils.WithSeparator(Path.GetFullPath(outputDirectory)))) 
+                    throw new UnauthorizedAccessException($"Zip 文件项 {entry.FullName} 的路径在压缩包之外，这可能导致安全问题");
+                // 实际的解压
+                using var entryStream = entry.Open();
+                FileUtils.Write(outputFilePath, entryStream);
+            }
+        }
+        try { // 尝试两种编码
+            ExtractWithEncoding(new UTF8Encoding(false, true));
+        } catch (InvalidDataException) {
+            ExtractWithEncoding(Encoding.GetEncoding("GB18030"));
+        }
+    }
+
+    /// <summary>
+    /// 将指定文件夹的内容打包为一个 zip 压缩包。
+    /// 会自动创建文件夹。会覆盖已有文件。
+    /// </summary>
+    public static void CreateZipFromDirectory(string outputFullPath, string sourceDirectory) {
+        outputFullPath = PathUtils.WithLongPath(outputFullPath);
+        sourceDirectory = PathUtils.WithLongPath(sourceDirectory);
+        DirectoryUtils.Create(outputFullPath, isFilePath: true);
+        FileUtils.Delete(outputFullPath);
+        ZipFile.CreateFromDirectory(sourceDirectory, outputFullPath);
+    }
+
+    /// <summary>
+    /// 将多个文件打包为一个压缩文件，所有文件都会被放在压缩文件的根目录。
+    /// 会自动创建文件夹。会覆盖已有文件。
+    /// </summary>
+    public static void CreateZipFromFiles(string outputFullPath, params string[] sourceFiles) {
+        outputFullPath = PathUtils.WithLongPath(outputFullPath);
+        sourceFiles = sourceFiles.Select(PathUtils.WithLongPath).ToArray();
+        DirectoryUtils.Create(outputFullPath, isFilePath: true);
+        FileUtils.Delete(outputFullPath);
+        using var archive = ZipFile.Open(outputFullPath, ZipArchiveMode.Create);
+        foreach (var source in sourceFiles) {
+            if (!FileUtils.Exists(source)) throw new FileNotFoundException($"未找到需要被压缩的文件（{source})", source);
+            using var sourceStream = FileUtils.ReadAsStream(source);
+            using var entryStream = archive.CreateEntry(Path.GetFileName(source), CompressionLevel.Optimal).Open();
+            sourceStream.CopyTo(entryStream);
+        }
     }
 
     #endregion

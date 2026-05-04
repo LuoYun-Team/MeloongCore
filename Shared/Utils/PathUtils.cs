@@ -4,19 +4,14 @@ public static class PathUtils {
     #region 分隔符
 
     /// <summary>
-    /// 检查路径是否以文件夹分隔符结尾。
-    /// </summary>
-    public static bool EndsWithSeparator(string path) => path.EndsWithF(Path.DirectorySeparatorChar) || path.EndsWithF(Path.AltDirectorySeparatorChar);
-
-    /// <summary>
     /// 确保路径的结尾包含文件夹分隔符。
     /// </summary>
-    public static string WithSeparator(string folder) => EndsWithSeparator(folder) ? folder : folder + Path.DirectorySeparatorChar;
+    public static string WithSeparator(string folder) => folder.EndsWithF(Path.DirectorySeparatorChar) ? folder : folder + Path.DirectorySeparatorChar;
 
     /// <summary>
     /// 确保路径的结尾不包含文件夹分隔符。
     /// </summary>
-    public static string WithoutSeparator(string folder) => EndsWithSeparator(folder) ? folder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) : folder;
+    public static string WithoutSeparator(string folder) => folder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
     #endregion
 
@@ -60,12 +55,12 @@ public static class PathUtils {
     private static extern int GetShortPathNameW(string lpszLongPath, [Out] char[] buffer, int cchBuffer);
 
     /// <summary>
-    /// 将路径转换为以 \\?\ 开头的标准长路径格式。
+    /// 将完整路径转换为以 \\?\ 开头的标准长路径格式。
     /// 这会去除路径末尾的分隔符，且将 / 替换为 \。
     /// </summary>
     public static string WithLongPath(string path) {
         if (string.IsNullOrWhiteSpace(path)) return path;
-        if (path.StartsWithF(@"\\")) return path; // 已有长路径前缀
+        if (path.StartsWithF(@"\\?\")) return path; // 已经是长路径
         path = WithoutSeparator(path).Replace('/', '\\'); // API 要求这个格式……
         return $@"\\?\{path}";
     }

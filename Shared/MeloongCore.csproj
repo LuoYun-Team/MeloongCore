@@ -24,8 +24,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Reference Include="System.IO.Compression" />
 	  <Reference Include="System.ServiceModel" />
-	  <Reference Include="Microsoft.VisualBasic" />
 	</ItemGroup>
 
 	<ItemGroup>
