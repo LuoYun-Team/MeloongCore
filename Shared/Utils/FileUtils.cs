@@ -1,5 +1,4 @@
 ﻿using System.IO.Compression;
-using System.Text;
 
 namespace MeloongCore;
 public static class FileUtils {
@@ -162,10 +161,12 @@ public static class FileUtils {
                 throw;
             }
         }
-        try { // 尝试两种编码
-            return TryOpen(new UTF8Encoding(false, true));
-        } catch (DecoderFallbackException) {
-            return TryOpen(Encoding.GetEncoding("GB18030"));
+        try {
+            try { // 尝试两种编码
+                return TryOpen(new UTF8Encoding(false, true));
+            } catch (DecoderFallbackException) {
+                return TryOpen(Encoding.GetEncoding("GB18030"));
+            }
         } catch (InvalidDataException ex) {
             throw new InvalidDataException($"文件不是压缩包，或者文件已损坏（{zipFilePath}）", ex);
         }
@@ -175,24 +176,28 @@ public static class FileUtils {
     /// 尝试根据后缀名判断文件种类并解压文件，支持 gz 与 zip，会尝试将 jar 以 zip 方式解压。
     /// 会自动创建文件夹。会覆盖已有文件，但不会删除多余文件。
     /// </summary>
-    public static void ExtractToDirectory(string compressionFile, string outputDirectory, Action<double>? progressIncrementHandler = null) {
+    /// <param name="progressHandler">参数为已完成的总比例（0~1）。</param>
+    public static void ExtractToDirectory(string compressionFile, string outputDirectory, Action<double>? progressHandler = null) {
         compressionFile = PathUtils.WithLongPath(compressionFile);
         DirectoryUtils.Create(outputDirectory);
         // 解压 gz（gz 不需要考虑编码）
         if (compressionFile.EndsWithF(".gz", true)) {
-            using var stream = new GZipStream(FileUtils.ReadAsStream(compressionFile), CompressionMode.Decompress);
-            FileUtils.Write(Path.Combine(outputDirectory, Path.GetFileNameWithoutExtension(compressionFile)), stream);
+            using var fileStream = FileUtils.ReadAsStream(compressionFile);
+            using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
+            FileUtils.Write(Path.Combine(outputDirectory, Path.GetFileNameWithoutExtension(compressionFile)), gzipStream);
             return;
         }
         // 解压 zip
         using var archive = FileUtils.OpenZip(compressionFile);
-        int entryCount = archive.Entries.Count;
+        int totalCount = archive.Entries.Count;
+        int doneCount = 0;
         foreach (var entry in archive.Entries) {
-            if (progressIncrementHandler != null && entryCount > 0) progressIncrementHandler(1.0 / entryCount);
+            doneCount++;
+            if (progressHandler != null && totalCount > 0) progressHandler((double) doneCount / totalCount);
             if (string.IsNullOrEmpty(entry.Name)) continue; // 跳过文件夹条目（ZipArchive 会将文件夹也作为一个 entry，但它们的 Name 为空）
             // ZipSlip 修复
             string outputFilePath = PathUtils.WithLongPath(Path.GetFullPath(Path.Combine(outputDirectory, entry.FullName)));
-            if (!outputFilePath.StartsWithF(PathUtils.WithSeparator(PathUtils.WithLongPath(Path.GetFullPath(outputDirectory)))))
+            if (!outputFilePath.StartsWithF(PathUtils.WithSeparator(PathUtils.WithLongPath(Path.GetFullPath(outputDirectory))), ignoreCase:true))
                 throw new UnauthorizedAccessException($"Zip 文件项 {entry.FullName} 的路径在压缩包之外，这可能导致安全问题");
             // 实际的解压
             using var entryStream = entry.Open();

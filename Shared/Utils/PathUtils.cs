@@ -6,12 +6,16 @@ public static class PathUtils {
     /// <summary>
     /// 确保路径的结尾包含文件夹分隔符。
     /// </summary>
-    public static string WithSeparator(string folder) => folder.EndsWithF(Path.DirectorySeparatorChar) ? folder : folder + Path.DirectorySeparatorChar;
+    public static string WithSeparator(string folder) {
+        return folder.EndsWithF(Path.DirectorySeparatorChar) ? folder : folder + Path.DirectorySeparatorChar;
+    }
 
     /// <summary>
     /// 确保路径的结尾不包含文件夹分隔符。
     /// </summary>
-    public static string WithoutSeparator(string folder) => folder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    public static string WithoutSeparator(string folder) {
+        return folder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    }
 
     #endregion
 
@@ -62,7 +66,11 @@ public static class PathUtils {
         if (string.IsNullOrWhiteSpace(path)) return path;
         if (path.StartsWithF(@"\\?\")) return path; // 已经是长路径
         path = WithoutSeparator(path).Replace('/', '\\'); // API 要求这个格式……
-        return $@"\\?\{path}";
+        if (path.StartsWithF(@"\\")) {
+            return $@"\\?\UNC\{path.Substring(2)}";
+        } else {
+            return $@"\\?\{path}";
+        }
     }
 
     /// <summary>
