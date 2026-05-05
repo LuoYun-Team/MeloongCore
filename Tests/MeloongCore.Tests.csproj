@@ -18,6 +18,8 @@
 	  <None Remove="TestFiles\FileUtils\Gzip.gz" />
 	  <None Remove="TestFiles\FileUtils\Not zip.zip" />
 	  <None Remove="TestFiles\FileUtils\UTF8 Encoding.zip" />
+	  <None Remove="TestFiles\FileUtils\DotDot ZipSlip.zip" />
+	  <None Remove="TestFiles\FileUtils\AbsPath ZipSlip.zip" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -48,6 +50,12 @@
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </Content>
 	  <Content Include="TestFiles\FileUtils\Not zip.zip">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="TestFiles\FileUtils\DotDot ZipSlip.zip">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="TestFiles\FileUtils\AbsPath ZipSlip.zip">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </Content>
 	</ItemGroup>
