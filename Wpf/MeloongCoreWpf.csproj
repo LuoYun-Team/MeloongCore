@@ -31,7 +31,6 @@
 
 	<ItemGroup>
 	  <Reference Include="PresentationFramework" />
-	  <Reference Include="System.ServiceModel" />
 	</ItemGroup>
 
 	<ItemGroup>
