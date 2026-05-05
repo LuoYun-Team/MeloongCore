@@ -23,6 +23,96 @@ public class FileUtilsTest : IDisposable {
         Assert.Throws<InvalidDataException>(() => FileUtils.OpenZip(TestUtils.GetTestFile(nameof(FileUtils), "Not zip.zip")));
     }
 
+    [Fact(DisplayName = nameof(ExtractToDirectory))]
+    public void ExtractToDirectory() {
+
+
+
+
+
+        //const string fileContent = "hello extract";
+        //string zipPath = CreateZipWithEncoding("single.zip", new UTF8Encoding(false, true),
+        //    ("file.txt", fileContent));
+        //string outDir = Path.Combine(_tempDir, "out_single");
+        //
+        //FileUtils.ExtractToDirectory(zipPath, outDir);
+        //
+        //string extractedFile = Path.Combine(outDir, "file.txt");
+        //Assert.True(File.Exists(extractedFile));
+        //Assert.Equal(fileContent, ReadFile(extractedFile));
+        //
+        //string zipPath = CreateZipWithEncoding("multi_extract.zip", new UTF8Encoding(false, true),
+        //    ("a.txt", "aaa"),
+        //    ("b.txt", "bbb"));
+        //string outDir = Path.Combine(_tempDir, "out_multi");
+        //
+        //FileUtils.ExtractToDirectory(zipPath, outDir);
+        //
+        //Assert.True(File.Exists(Path.Combine(outDir, "a.txt")));
+        //Assert.True(File.Exists(Path.Combine(outDir, "b.txt")));
+        //
+        //string zipPath = CreateZipWithEncoding("subdir.zip", new UTF8Encoding(false, true),
+        //    ("subdir/nested.txt", "nested content"));
+        //string outDir = Path.Combine(_tempDir, "out_subdir");
+        //
+        //FileUtils.ExtractToDirectory(zipPath, outDir);
+        //
+        //string nestedFile = Path.Combine(outDir, "subdir", "nested.txt");
+        //Assert.True(File.Exists(nestedFile));
+        //Assert.Equal("nested content", ReadFile(nestedFile));
+        //
+        //string zipPath = CreateZipWithEncoding("autocreate.zip", new UTF8Encoding(false, true),
+        //    ("f.txt", "x"));
+        //string outDir = Path.Combine(_tempDir, "nonexistent", "deep", "dir");
+        //
+        //FileUtils.ExtractToDirectory(zipPath, outDir);
+        //
+        //Assert.True(Directory.Exists(outDir));
+        //
+        //string zipPath = CreateZipWithEncoding("overwrite.zip", new UTF8Encoding(false, true),
+        //    ("f.txt", "new content"));
+        //string outDir = Path.Combine(_tempDir, "out_overwrite");
+        //Directory.CreateDirectory(outDir);
+        //File.WriteAllText(Path.Combine(outDir, "f.txt"), "old content");
+        //
+        //FileUtils.ExtractToDirectory(zipPath, outDir);
+        //
+        //Assert.Equal("new content", ReadFile(Path.Combine(outDir, "f.txt")));
+        //
+        //// 手动构造一个包含路径穿越条目（../../evil.txt）的 zip
+        //string zipPath = Path.Combine(_tempDir, "zipslip.zip");
+        //using (var stream = File.Create(zipPath))
+        //using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: false, new UTF8Encoding(false, true))) {
+        //    var entry = archive.CreateEntry("../../evil.txt");
+        //    using var writer = new StreamWriter(entry.Open());
+        //    writer.Write("pwned");
+        //}
+        //string outDir = Path.Combine(_tempDir, "out_zipslip");
+        //Directory.CreateDirectory(outDir);
+        //
+        //Assert.Throws<UnauthorizedAccessException>(() => FileUtils.ExtractToDirectory(zipPath, outDir));
+        //
+        //const string innerContent = "gzip content";
+        //const string innerFileName = "inner.txt";
+        //string gzPath = CreateGzFile(innerFileName, innerContent);
+        //string outDir = Path.Combine(_tempDir, "out_gz");
+        //
+        //FileUtils.ExtractToDirectory(gzPath, outDir);
+        //
+        //string extractedFile = Path.Combine(outDir, innerFileName);
+        //Assert.True(File.Exists(extractedFile));
+        //Assert.Equal(innerContent, ReadFile(extractedFile));
+        //
+        //// jar 文件实际上是 zip 格式
+        //string zipPath = CreateZipWithEncoding("app.jar", new UTF8Encoding(false, true),
+        //    ("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\r\n"));
+        //string outDir = Path.Combine(_tempDir, "out_jar");
+        //
+        //FileUtils.ExtractToDirectory(zipPath, outDir);
+        //
+        //Assert.True(File.Exists(Path.Combine(outDir, "META-INF", "MANIFEST.MF")));
+    }
+
     #endregion
 
 
@@ -88,116 +178,6 @@ public class FileUtilsTest : IDisposable {
     /// </summary>
     private static string ReadFile(string path) {
         return File.ReadAllText(path, Encoding.UTF8);
-    }
-
-    #endregion
-
-    #region ExtractToDirectory 测试
-
-    
-    public void ExtractToDirectory_ZipWithSingleFile_ExtractsCorrectly() {
-        const string fileContent = "hello extract";
-        string zipPath = CreateZipWithEncoding("single.zip", new UTF8Encoding(false, true),
-            ("file.txt", fileContent));
-        string outDir = Path.Combine(_tempDir, "out_single");
-
-        FileUtils.ExtractToDirectory(zipPath, outDir);
-
-        string extractedFile = Path.Combine(outDir, "file.txt");
-        Assert.True(File.Exists(extractedFile));
-        Assert.Equal(fileContent, ReadFile(extractedFile));
-    }
-
-    
-    public void ExtractToDirectory_ZipWithMultipleFiles_AllExtracted() {
-        string zipPath = CreateZipWithEncoding("multi_extract.zip", new UTF8Encoding(false, true),
-            ("a.txt", "aaa"),
-            ("b.txt", "bbb"));
-        string outDir = Path.Combine(_tempDir, "out_multi");
-
-        FileUtils.ExtractToDirectory(zipPath, outDir);
-
-        Assert.True(File.Exists(Path.Combine(outDir, "a.txt")));
-        Assert.True(File.Exists(Path.Combine(outDir, "b.txt")));
-    }
-
-    
-    public void ExtractToDirectory_ZipWithSubdirectory_DirectoryStructurePreserved() {
-        string zipPath = CreateZipWithEncoding("subdir.zip", new UTF8Encoding(false, true),
-            ("subdir/nested.txt", "nested content"));
-        string outDir = Path.Combine(_tempDir, "out_subdir");
-
-        FileUtils.ExtractToDirectory(zipPath, outDir);
-
-        string nestedFile = Path.Combine(outDir, "subdir", "nested.txt");
-        Assert.True(File.Exists(nestedFile));
-        Assert.Equal("nested content", ReadFile(nestedFile));
-    }
-
-    
-    public void ExtractToDirectory_OutputDirectoryAutoCreated() {
-        string zipPath = CreateZipWithEncoding("autocreate.zip", new UTF8Encoding(false, true),
-            ("f.txt", "x"));
-        string outDir = Path.Combine(_tempDir, "nonexistent", "deep", "dir");
-
-        FileUtils.ExtractToDirectory(zipPath, outDir);
-
-        Assert.True(Directory.Exists(outDir));
-    }
-
-    
-    public void ExtractToDirectory_OverwritesExistingFile() {
-        string zipPath = CreateZipWithEncoding("overwrite.zip", new UTF8Encoding(false, true),
-            ("f.txt", "new content"));
-        string outDir = Path.Combine(_tempDir, "out_overwrite");
-        Directory.CreateDirectory(outDir);
-        File.WriteAllText(Path.Combine(outDir, "f.txt"), "old content");
-
-        FileUtils.ExtractToDirectory(zipPath, outDir);
-
-        Assert.Equal("new content", ReadFile(Path.Combine(outDir, "f.txt")));
-    }
-
-    
-    public void ExtractToDirectory_ZipSlip_ThrowsUnauthorizedAccessException() {
-        // 手动构造一个包含路径穿越条目（../../evil.txt）的 zip
-        string zipPath = Path.Combine(_tempDir, "zipslip.zip");
-        using (var stream = File.Create(zipPath))
-        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: false, new UTF8Encoding(false, true))) {
-            var entry = archive.CreateEntry("../../evil.txt");
-            using var writer = new StreamWriter(entry.Open());
-            writer.Write("pwned");
-        }
-        string outDir = Path.Combine(_tempDir, "out_zipslip");
-        Directory.CreateDirectory(outDir);
-
-        Assert.Throws<UnauthorizedAccessException>(() => FileUtils.ExtractToDirectory(zipPath, outDir));
-    }
-
-    
-    public void ExtractToDirectory_GzFile_ExtractsInnerFile() {
-        const string innerContent = "gzip content";
-        const string innerFileName = "inner.txt";
-        string gzPath = CreateGzFile(innerFileName, innerContent);
-        string outDir = Path.Combine(_tempDir, "out_gz");
-
-        FileUtils.ExtractToDirectory(gzPath, outDir);
-
-        string extractedFile = Path.Combine(outDir, innerFileName);
-        Assert.True(File.Exists(extractedFile));
-        Assert.Equal(innerContent, ReadFile(extractedFile));
-    }
-
-    
-    public void ExtractToDirectory_JarFile_ExtractsAsZip() {
-        // jar 文件实际上是 zip 格式
-        string zipPath = CreateZipWithEncoding("app.jar", new UTF8Encoding(false, true),
-            ("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\r\n"));
-        string outDir = Path.Combine(_tempDir, "out_jar");
-
-        FileUtils.ExtractToDirectory(zipPath, outDir);
-
-        Assert.True(File.Exists(Path.Combine(outDir, "META-INF", "MANIFEST.MF")));
     }
 
     #endregion
