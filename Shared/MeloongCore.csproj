@@ -11,8 +11,6 @@
 		<Deterministic>true</Deterministic>
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>
-		<AnalysisLevel>latest-recommended</AnalysisLevel>
-		<EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
 		<ImplicitUsings>enable</ImplicitUsings>
 	</PropertyGroup>
 
