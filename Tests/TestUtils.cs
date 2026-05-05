@@ -8,9 +8,9 @@ public abstract class TestWithFolder {
 
     /// <summary>
     /// 测试用的临时文件夹路径。
-    /// 这是一个包含特殊字符的长路径，以 \ 结尾。
+    /// 这是一个包含特殊字符的长路径，不以 \\?\ 开头，以 \ 结尾。
     /// </summary>
-    private readonly string tempFolder;
+    public readonly string tempFolder;
     public TestWithFolder() {
         tempFolder = Path.Combine(
             Path.GetTempPath(), "PCL", "Tests",

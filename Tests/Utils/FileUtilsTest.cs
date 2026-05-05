@@ -1,5 +1,3 @@
-using System.IO.Compression;
-
 namespace MeloongCore.Tests;
 public class FileUtilsTest : TestWithFolder {
 
@@ -8,108 +6,32 @@ public class FileUtilsTest : TestWithFolder {
     [Theory]
     [InlineData("GB Encoding.zip")]
     [InlineData("UTF8 Encoding.zip")]
-    public void OpenZip_Successful(string testFile) {
-        using var archive = FileUtils.OpenZip(GetTestFile(testFile));
-        Assert.Contains(archive.Entries, e => e.Name == "中文文件.txt");
-        Assert.Contains(archive.Entries, e => e.Name == "fabricloader.log");
-        Assert.DoesNotContain(archive.Entries, e => e.Name == "fabricloader.log2");
+    public void Compression_ReadZip(string testFile) {
+        double progress = 0;
+        string output = Path.Combine(tempFolder, "Extracted");
+        FileUtils.ExtractToDirectory(GetTestFile(testFile), output, p => progress = p);
+        Assert.Equal(1, progress);
+        Assert.True(DirectoryUtils.Exists(Path.Combine(output, "文件夹")));
+        Assert.False(DirectoryUtils.Exists(Path.Combine(output, "空文件夹")));
+        Assert.Contains("FabricLoader", File.ReadAllText(PathUtils.WithLongPath(Path.Combine(output, "fabricloader.log"))));
+        Assert.Contains("测试内容", File.ReadAllText(PathUtils.WithLongPath(Path.Combine(output, "文件夹", "中文文件.txt"))));
+    }
+
+    [Theory]
+    [InlineData("GZ.gz", "LTCat")]
+    public void Compression_ReadGz(string testFile, string containsText) {
+        double progress = 0;
+        string output = Path.Combine(tempFolder, "Extracted");
+        FileUtils.ExtractToDirectory(GetTestFile(testFile), output, p => progress = p);
+        Assert.Equal(1, progress);
+        Assert.Contains(containsText, File.ReadAllText(PathUtils.WithLongPath(Path.Combine(output, Path.GetFileNameWithoutExtension(testFile)))));
     }
 
     [Theory]
     [InlineData("Corrupted.zip")]
     [InlineData("Not zip.zip")]
-    public void OpenZip_Corrupted(string testFile) {
-        Assert.Throws<InvalidDataException>(() => FileUtils.OpenZip(GetTestFile(testFile)));
-    }
-
-    [Fact(DisplayName = nameof(ExtractToDirectory))]
-    public void ExtractToDirectory() {
-
-
-
-
-
-        //const string fileContent = "hello extract";
-        //string zipPath = CreateZipWithEncoding("single.zip", new UTF8Encoding(false, true),
-        //    ("file.txt", fileContent));
-        //string outDir = Path.Combine(_tempDir, "out_single");
-        //
-        //FileUtils.ExtractToDirectory(zipPath, outDir);
-        //
-        //string extractedFile = Path.Combine(outDir, "file.txt");
-        //Assert.True(File.Exists(extractedFile));
-        //Assert.Equal(fileContent, ReadFile(extractedFile));
-        //
-        //string zipPath = CreateZipWithEncoding("multi_extract.zip", new UTF8Encoding(false, true),
-        //    ("a.txt", "aaa"),
-        //    ("b.txt", "bbb"));
-        //string outDir = Path.Combine(_tempDir, "out_multi");
-        //
-        //FileUtils.ExtractToDirectory(zipPath, outDir);
-        //
-        //Assert.True(File.Exists(Path.Combine(outDir, "a.txt")));
-        //Assert.True(File.Exists(Path.Combine(outDir, "b.txt")));
-        //
-        //string zipPath = CreateZipWithEncoding("subdir.zip", new UTF8Encoding(false, true),
-        //    ("subdir/nested.txt", "nested content"));
-        //string outDir = Path.Combine(_tempDir, "out_subdir");
-        //
-        //FileUtils.ExtractToDirectory(zipPath, outDir);
-        //
-        //string nestedFile = Path.Combine(outDir, "subdir", "nested.txt");
-        //Assert.True(File.Exists(nestedFile));
-        //Assert.Equal("nested content", ReadFile(nestedFile));
-        //
-        //string zipPath = CreateZipWithEncoding("autocreate.zip", new UTF8Encoding(false, true),
-        //    ("f.txt", "x"));
-        //string outDir = Path.Combine(_tempDir, "nonexistent", "deep", "dir");
-        //
-        //FileUtils.ExtractToDirectory(zipPath, outDir);
-        //
-        //Assert.True(Directory.Exists(outDir));
-        //
-        //string zipPath = CreateZipWithEncoding("overwrite.zip", new UTF8Encoding(false, true),
-        //    ("f.txt", "new content"));
-        //string outDir = Path.Combine(_tempDir, "out_overwrite");
-        //Directory.CreateDirectory(outDir);
-        //File.WriteAllText(Path.Combine(outDir, "f.txt"), "old content");
-        //
-        //FileUtils.ExtractToDirectory(zipPath, outDir);
-        //
-        //Assert.Equal("new content", ReadFile(Path.Combine(outDir, "f.txt")));
-        //
-        //// 手动构造一个包含路径穿越条目（../../evil.txt）的 zip
-        //string zipPath = Path.Combine(_tempDir, "zipslip.zip");
-        //using (var stream = File.Create(zipPath))
-        //using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: false, new UTF8Encoding(false, true))) {
-        //    var entry = archive.CreateEntry("../../evil.txt");
-        //    using var writer = new StreamWriter(entry.Open());
-        //    writer.Write("pwned");
-        //}
-        //string outDir = Path.Combine(_tempDir, "out_zipslip");
-        //Directory.CreateDirectory(outDir);
-        //
-        //Assert.Throws<UnauthorizedAccessException>(() => FileUtils.ExtractToDirectory(zipPath, outDir));
-        //
-        //const string innerContent = "gzip content";
-        //const string innerFileName = "inner.txt";
-        //string gzPath = CreateGzFile(innerFileName, innerContent);
-        //string outDir = Path.Combine(_tempDir, "out_gz");
-        //
-        //FileUtils.ExtractToDirectory(gzPath, outDir);
-        //
-        //string extractedFile = Path.Combine(outDir, innerFileName);
-        //Assert.True(File.Exists(extractedFile));
-        //Assert.Equal(innerContent, ReadFile(extractedFile));
-        //
-        //// jar 文件实际上是 zip 格式
-        //string zipPath = CreateZipWithEncoding("app.jar", new UTF8Encoding(false, true),
-        //    ("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\r\n"));
-        //string outDir = Path.Combine(_tempDir, "out_jar");
-        //
-        //FileUtils.ExtractToDirectory(zipPath, outDir);
-        //
-        //Assert.True(File.Exists(Path.Combine(outDir, "META-INF", "MANIFEST.MF")));
+    public void Compression_ReadBad(string testFile) {
+        Assert.Throws<InvalidDataException>(() => FileUtils.ExtractToDirectory(GetTestFile(testFile), tempFolder));
     }
 
     #endregion
@@ -118,24 +40,7 @@ public class FileUtilsTest : TestWithFolder {
 
 
     /*
-    #region 辅助方法
-
-    /// <summary>
-    /// 创建一个包含若干文件的临时文件夹，并返回该文件夹路径。
-    /// </summary>
-    private string CreateSourceDirectory(params (string relativePath, string content)[] files) {
-        string dir = Path.Combine(_tempDir, "src_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        foreach (var (relativePath, content) in files) {
-            string fullPath = Path.Combine(dir, relativePath);
-            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-            File.WriteAllText(fullPath, content, Encoding.UTF8);
-        }
-        return dir;
-    }
-
-    #endregion
-
+     * 
     #region CreateZipFromDirectory 测试
 
     

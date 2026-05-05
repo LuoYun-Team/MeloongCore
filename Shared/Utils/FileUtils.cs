@@ -185,6 +185,7 @@ public static class FileUtils {
             using var fileStream = FileUtils.ReadAsStream(compressionFile);
             using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
             FileUtils.Write(Path.Combine(outputDirectory, Path.GetFileNameWithoutExtension(compressionFile)), gzipStream);
+            progressHandler?.Invoke(1);
             return;
         }
         // 解压 zip
@@ -193,7 +194,7 @@ public static class FileUtils {
         int doneCount = 0;
         foreach (var entry in archive.Entries) {
             doneCount++;
-            if (progressHandler != null && totalCount > 0) progressHandler((double) doneCount / totalCount);
+            if (totalCount > 0) progressHandler?.Invoke((double) doneCount / totalCount);
             if (string.IsNullOrEmpty(entry.Name)) continue; // 跳过文件夹条目（ZipArchive 会将文件夹也作为一个 entry，但它们的 Name 为空）
             // ZipSlip 修复
             string outputFilePath = PathUtils.WithLongPath(Path.GetFullPath(Path.Combine(outputDirectory, entry.FullName)));
