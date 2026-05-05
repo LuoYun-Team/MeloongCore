@@ -3,6 +3,32 @@ using System.IO.Compression;
 namespace MeloongCore.Tests;
 public class FileUtilsTest : IDisposable {
 
+    #region 压缩包
+
+    [Fact(DisplayName = nameof(OpenZip))]
+    public void OpenZip() {
+        // GB 编码
+        using var gbArchive = FileUtils.OpenZip(TestUtils.GetTestFile(nameof(FileUtils), "GB Encoding.zip"));
+        Assert.Contains(gbArchive.Entries, e => e.Name == "中文文件.txt");
+        Assert.Contains(gbArchive.Entries, e => e.Name == "fabricloader.log");
+        Assert.DoesNotContain(gbArchive.Entries, e => e.Name == "fabricloader.log2");
+        // UTF8 编码
+        using var utfArchive = FileUtils.OpenZip(TestUtils.GetTestFile(nameof(FileUtils), "UTF8 Encoding.zip"));
+        Assert.Contains(utfArchive.Entries, e => e.Name == "中文文件.txt");
+        Assert.Contains(utfArchive.Entries, e => e.Name == "fabricloader.log");
+        Assert.DoesNotContain(utfArchive.Entries, e => e.Name == "fabricloader.log2");
+        // 损坏的文件
+        Assert.Throws<InvalidDataException>(() => FileUtils.OpenZip(TestUtils.GetTestFile(nameof(FileUtils), "Corrupted.zip")));
+        // 非压缩文件
+        Assert.Throws<InvalidDataException>(() => FileUtils.OpenZip(TestUtils.GetTestFile(nameof(FileUtils), "Not zip.zip")));
+    }
+
+    #endregion
+
+
+
+
+
     #region 辅助方法
 
     private readonly string _tempDir;
@@ -62,49 +88,6 @@ public class FileUtilsTest : IDisposable {
     /// </summary>
     private static string ReadFile(string path) {
         return File.ReadAllText(path, Encoding.UTF8);
-    }
-
-    #endregion
-
-    #region OpenZip
-
-    public void OpenZip_ValidUtf8Zip_OpensSuccessfully() {
-        string zipPath = CreateZipWithEncoding("utf8.zip", new UTF8Encoding(false, true),
-            ("hello.txt", "world"));
-        using var archive = FileUtils.OpenZip(zipPath);
-        Assert.Single(archive.Entries);
-        Assert.Equal("hello.txt", archive.Entries[0].FullName);
-    }
-    
-    public void OpenZip_ValidUtf8Zip_EntryContentIsCorrect() {
-        const string expectedContent = "测试内容";
-        string zipPath = CreateZipWithEncoding("utf8content.zip", new UTF8Encoding(false, true),
-            ("data.txt", expectedContent));
-        using var archive = FileUtils.OpenZip(zipPath);
-        using var entryStream = archive.Entries[0].Open();
-        using var reader = new StreamReader(entryStream, Encoding.UTF8);
-        Assert.Equal(expectedContent, reader.ReadToEnd());
-    }
-    
-    public void OpenZip_MultipleEntries_AllEntriesAccessible() {
-        string zipPath = CreateZipWithEncoding("multi.zip", new UTF8Encoding(false, true),
-            ("a.txt", "aaa"),
-            ("b.txt", "bbb"),
-            ("c.txt", "ccc"));
-        using var archive = FileUtils.OpenZip(zipPath);
-        Assert.Equal(3, archive.Entries.Count);
-    }
-
-    public void OpenZip_InvalidFile_ThrowsInvalidDataException() {
-        string invalidPath = Path.Combine(_tempDir, "invalid.zip");
-        File.WriteAllBytes(invalidPath, [0x00, 0x01, 0x02, 0x03]); // 非 zip 数据
-        Assert.Throws<InvalidDataException>(() => FileUtils.OpenZip(invalidPath));
-    }
-
-    public void OpenZip_EmptyZip_ReturnsEmptyEntries() {
-        string zipPath = CreateZipWithEncoding("empty.zip", new UTF8Encoding(false, true));
-        using var archive = FileUtils.OpenZip(zipPath);
-        Assert.Empty(archive.Entries);
     }
 
     #endregion
