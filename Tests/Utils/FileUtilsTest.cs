@@ -1,26 +1,25 @@
 using System.IO.Compression;
 
 namespace MeloongCore.Tests;
-public class FileUtilsTest : IDisposable {
+public class FileUtilsTest : TestWithFolder {
 
     #region 压缩包
 
-    [Fact(DisplayName = nameof(OpenZip))]
-    public void OpenZip() {
-        // GB 编码
-        using var gbArchive = FileUtils.OpenZip(TestUtils.GetTestFile(nameof(FileUtils), "GB Encoding.zip"));
-        Assert.Contains(gbArchive.Entries, e => e.Name == "中文文件.txt");
-        Assert.Contains(gbArchive.Entries, e => e.Name == "fabricloader.log");
-        Assert.DoesNotContain(gbArchive.Entries, e => e.Name == "fabricloader.log2");
-        // UTF8 编码
-        using var utfArchive = FileUtils.OpenZip(TestUtils.GetTestFile(nameof(FileUtils), "UTF8 Encoding.zip"));
-        Assert.Contains(utfArchive.Entries, e => e.Name == "中文文件.txt");
-        Assert.Contains(utfArchive.Entries, e => e.Name == "fabricloader.log");
-        Assert.DoesNotContain(utfArchive.Entries, e => e.Name == "fabricloader.log2");
-        // 损坏的文件
-        Assert.Throws<InvalidDataException>(() => FileUtils.OpenZip(TestUtils.GetTestFile(nameof(FileUtils), "Corrupted.zip")));
-        // 非压缩文件
-        Assert.Throws<InvalidDataException>(() => FileUtils.OpenZip(TestUtils.GetTestFile(nameof(FileUtils), "Not zip.zip")));
+    [Theory]
+    [InlineData("GB Encoding.zip")]
+    [InlineData("UTF8 Encoding.zip")]
+    public void OpenZip_Successful(string testFile) {
+        using var archive = FileUtils.OpenZip(GetTestFile(testFile));
+        Assert.Contains(archive.Entries, e => e.Name == "中文文件.txt");
+        Assert.Contains(archive.Entries, e => e.Name == "fabricloader.log");
+        Assert.DoesNotContain(archive.Entries, e => e.Name == "fabricloader.log2");
+    }
+
+    [Theory]
+    [InlineData("Corrupted.zip")]
+    [InlineData("Not zip.zip")]
+    public void OpenZip_Corrupted(string testFile) {
+        Assert.Throws<InvalidDataException>(() => FileUtils.OpenZip(GetTestFile(testFile)));
     }
 
     [Fact(DisplayName = nameof(ExtractToDirectory))]
@@ -118,19 +117,8 @@ public class FileUtilsTest : IDisposable {
 
 
 
-
+    /*
     #region 辅助方法
-
-    private readonly string _tempDir;
-
-    public FileUtilsTest() {
-        _tempDir = Path.Combine(Path.GetTempPath(), "MeloongCoreTests_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(_tempDir);
-    }
-
-    public void Dispose() {
-        if (Directory.Exists(_tempDir)) Directory.Delete(_tempDir, recursive: true);
-    }
 
     /// <summary>
     /// 创建一个包含若干文件的临时文件夹，并返回该文件夹路径。
@@ -144,40 +132,6 @@ public class FileUtilsTest : IDisposable {
             File.WriteAllText(fullPath, content, Encoding.UTF8);
         }
         return dir;
-    }
-
-    /// <summary>
-    /// 创建一个只含 ASCII 文件名的合法 ZIP，使用指定编码写入文件名。
-    /// </summary>
-    private string CreateZipWithEncoding(string zipName, Encoding encoding, params (string entryName, string content)[] entries) {
-        string zipPath = Path.Combine(_tempDir, zipName);
-        using var stream = File.Create(zipPath);
-        using var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: false, encoding);
-        foreach (var (entryName, content) in entries) {
-            var entry = archive.CreateEntry(entryName);
-            using var writer = new StreamWriter(entry.Open(), Encoding.UTF8);
-            writer.Write(content);
-        }
-        return zipPath;
-    }
-
-    /// <summary>
-    /// 创建一个用于 GZip 解压测试的 .gz 文件。
-    /// </summary>
-    private string CreateGzFile(string innerFileName, string content) {
-        string gzPath = Path.Combine(_tempDir, innerFileName + ".gz");
-        byte[] contentBytes = Encoding.UTF8.GetBytes(content);
-        using var fileStream = File.Create(gzPath);
-        using var gzStream = new GZipStream(fileStream, CompressionMode.Compress);
-        gzStream.Write(contentBytes, 0, contentBytes.Length);
-        return gzPath;
-    }
-
-    /// <summary>
-    /// 读取文件内容（兼容长路径）。
-    /// </summary>
-    private static string ReadFile(string path) {
-        return File.ReadAllText(path, Encoding.UTF8);
     }
 
     #endregion
@@ -392,5 +346,5 @@ public class FileUtilsTest : IDisposable {
     }
 
     #endregion
-
+    */
 }
