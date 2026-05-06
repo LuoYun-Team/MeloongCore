@@ -62,6 +62,7 @@ public static class Logger {
     public static ILogger Instance { get; set; } = new ConsoleLogger();
 
     // 转发给实例的方法调用
+    // TODO: Trace
     public static void Log(string message, LogLevels level = LogLevels.Info, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "")
         => Instance.Log(message, level, behavior, filePath);
     public static void Log(Exception ex, string? message = null, LogLevels level = LogLevels.Warning, LogBehaviors behavior = LogBehaviors.ToastIfDebug, [CallerFilePath] string filePath = "")

@@ -7,7 +7,10 @@ public static class DirectoryUtils {
     /// </summary>
     public static void Create(string path, bool isFilePath = false) {
         if (isFilePath) path = Path.GetDirectoryName(path);
-        Directory.CreateDirectory(PathUtils.WithLongPath(path));
+        if (Exists(path)) return;
+        Logger.Trace($"新建文件夹：{path}");
+        path = PathUtils.WithLongPath(path);
+        Directory.CreateDirectory(path);
     }
 
     /// <summary>
@@ -29,6 +32,7 @@ public static class DirectoryUtils {
     /// </summary>
     public static IEnumerable<string> GetFiles(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!Exists(path)) return [];
+        Logger.Trace($"枚举文件（{searchPattern}，递归：{!topDirectoryOnly}）：{path}");
         return Directory.EnumerateFiles(PathUtils.WithLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories).
             Select(PathUtils.WithoutLongPath);
     }
@@ -38,6 +42,7 @@ public static class DirectoryUtils {
     /// </summary>
     public static IEnumerable<string> GetDirectories(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!Exists(path)) return [];
+        Logger.Trace($"枚举文件夹（{searchPattern}，递归：{!topDirectoryOnly}）：{path}");
         return Directory.EnumerateDirectories(PathUtils.WithLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories).
             Select(PathUtils.WithoutLongPath);
     }
@@ -57,6 +62,7 @@ public static class DirectoryUtils {
     public static void Move(string sourceDirName, string destDirName) {
         if (!Exists(sourceDirName)) return;
         Create(destDirName);
+        Logger.Trace($"剪切文件夹：{sourceDirName} → {destDirName}");
         Directory.Move(PathUtils.WithLongPath(sourceDirName), PathUtils.WithLongPath(destDirName));
     }
 
@@ -64,8 +70,10 @@ public static class DirectoryUtils {
     /// 删除文件夹。
     /// </summary>
     public static void Delete(string dirPath, bool toRecycleBin = false) {
+        if (!Exists(dirPath)) return;
+        Logger.Trace($"{(toRecycleBin ? "将文件夹删除到回收站" : "删除文件夹")}：{dirPath}");
         if (toRecycleBin) {
-            if (Exists(dirPath)) FileUtils.DeleteToRecycleBin(dirPath);
+            FileUtils.DeleteToRecycleBin(dirPath);
         } else {
             Directory.Delete(PathUtils.WithLongPath(dirPath));
         }

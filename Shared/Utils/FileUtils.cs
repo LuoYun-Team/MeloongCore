@@ -1,4 +1,5 @@
-﻿using System.IO.Compression;
+﻿using System.IO;
+using System.IO.Compression;
 
 namespace MeloongCore;
 public static class FileUtils {
@@ -10,8 +11,15 @@ public static class FileUtils {
     /// 如果文件或文件夹不存在，则会自动创建。若已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, string text, Encoding? encoding = null) {
-        DirectoryUtils.Create(filePath, isFilePath: true);
-        File.WriteAllText(PathUtils.WithLongPath(filePath), text, encoding ?? new UTF8Encoding());
+        Write(filePath, (encoding ?? new UTF8Encoding()).GetBytes(text));
+    }
+
+    /// <summary>
+    /// 写入文件。
+    /// 如果文件或文件夹不存在，则会自动创建。若已存在，则会覆盖原文件。
+    /// </summary>
+    public static void Write(string filePath, IEnumerable<byte> content) {
+        Write(filePath, [..content]);
     }
 
     /// <summary>
@@ -20,16 +28,8 @@ public static class FileUtils {
     /// </summary>
     public static void Write(string filePath, byte[] content) {
         DirectoryUtils.Create(filePath, isFilePath: true);
+        Logger.Trace($"写入文件：{filePath}（{content.Length} 字节）");
         File.WriteAllBytes(PathUtils.WithLongPath(filePath), content);
-    }
-
-    /// <summary>
-    /// 写入文件。
-    /// 如果文件或文件夹不存在，则会自动创建。若已存在，则会覆盖原文件。
-    /// </summary>
-    public static void Write(string filePath, IEnumerable<byte> content) {
-        DirectoryUtils.Create(filePath, isFilePath: true);
-        File.WriteAllBytes(PathUtils.WithLongPath(filePath), [..content]);
     }
 
     /// <summary>
@@ -40,6 +40,7 @@ public static class FileUtils {
     public static void Write(string filePath, Stream stream) {
         using FileStream fileStream = CreateAsStream(PathUtils.WithLongPath(filePath));
         if (stream.CanSeek && stream.Position != 0) stream.Seek(0, SeekOrigin.Begin);
+        Logger.Trace($"写入文件：{filePath}（{stream.GetType().Name} {stream.Length} 字节）");
         stream.CopyTo(fileStream);
     }
 
@@ -51,8 +52,10 @@ public static class FileUtils {
     /// 删除文件。
     /// </summary>
     public static void Delete(string filePath, bool toRecycleBin = false) {
+        if (!Exists(filePath)) return;
+        Logger.Trace($"{(toRecycleBin ? "将文件删除到回收站" : "删除文件")}：{filePath}");
         if (toRecycleBin) {
-            if (Exists(filePath)) DeleteToRecycleBin(filePath);
+            DeleteToRecycleBin(filePath);
         } else {
             File.Delete(PathUtils.WithLongPath(filePath));
         }
@@ -139,6 +142,7 @@ public static class FileUtils {
     /// </summary>
     public static FileStream CreateAsStream(string filePath) {
         DirectoryUtils.Create(filePath, isFilePath: true);
+        Logger.Trace($"创建文件流：{filePath}");
         return new(PathUtils.WithLongPath(filePath), FileMode.Create);
     }
 
@@ -152,6 +156,7 @@ public static class FileUtils {
     /// </summary>
     public static ZipArchive OpenZip(string zipFilePath) {
         ZipArchive TryOpen(Encoding encoding) {
+            Logger.Trace($"尝试以 {encoding.EncodingName} 编码打开压缩包：{zipFilePath}");
             var result = ZipFile.Open(PathUtils.WithLongPath(zipFilePath), ZipArchiveMode.Read, encoding);
             try {
                 _ = result.Entries; // 如果编码有误，会在这里抛出 DecoderFallbackException；如果文件异常，会在这里抛出 InvalidDataException
@@ -182,9 +187,11 @@ public static class FileUtils {
         DirectoryUtils.Create(outputDirectory);
         // 解压 gz（gz 不需要考虑编码）
         if (compressionFile.EndsWithF(".gz", true)) {
+            string outFilePath = Path.Combine(outputDirectory, Path.GetFileNameWithoutExtension(compressionFile));
+            Logger.Trace($"解压 gz 文件：{compressionFile} → {outFilePath}");
             using var fileStream = FileUtils.ReadAsStream(compressionFile);
             using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
-            FileUtils.Write(Path.Combine(outputDirectory, Path.GetFileNameWithoutExtension(compressionFile)), gzipStream);
+            FileUtils.Write(outFilePath, gzipStream);
             progressHandler?.Invoke(1);
             return;
         }
@@ -192,6 +199,7 @@ public static class FileUtils {
         using var archive = FileUtils.OpenZip(compressionFile);
         int totalCount = archive.Entries.Count;
         int doneCount = 0;
+        Logger.Trace($"解压 zip 文件：{compressionFile} → {outputDirectory}（共 {totalCount} 项）");
         foreach (var entry in archive.Entries) {
             doneCount++;
             if (totalCount > 0) progressHandler?.Invoke((double) doneCount / totalCount);
@@ -215,6 +223,7 @@ public static class FileUtils {
         sourceDirectory = PathUtils.WithLongPath(sourceDirectory);
         DirectoryUtils.Create(outputFullPath, isFilePath: true);
         FileUtils.Delete(outputFullPath);
+        Logger.Trace($"将文件夹中的内容压缩为 zip 文件：{sourceDirectory} → {outputFullPath}");
         ZipFile.CreateFromDirectory(sourceDirectory, outputFullPath);
     }
 
@@ -242,6 +251,7 @@ public static class FileUtils {
         DirectoryUtils.Create(outputFullPath, isFilePath: true);
         FileUtils.Delete(outputFullPath);
         using var archive = ZipFile.Open(outputFullPath, ZipArchiveMode.Create);
+        Logger.Trace($"创建 zip 文件：{sources.Count} 个文件 → {outputFullPath}\n{sources.Select(p => $"- {p.Value} → {p.Key}").Join('\n')}");
         foreach (var pair in sources) archive.CreateEntryFromFile(PathUtils.WithLongPath(pair.Value), pair.Key.Replace('\\', '/'), CompressionLevel.Optimal);
     }
 
@@ -268,6 +278,7 @@ public static class FileUtils {
     public static void Copy(string sourceFilePath, string destFilePath) {
         if (sourceFilePath == destFilePath) return; // 如果复制同一个文件则跳过
         DirectoryUtils.Create(destFilePath, isFilePath: true);
+        Logger.Trace($"复制文件：{sourceFilePath} → {destFilePath}");
         File.Copy(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath), true);
     }
 
@@ -278,6 +289,7 @@ public static class FileUtils {
     public static void Move(string sourceFilePath, string destFilePath) {
         if (sourceFilePath == destFilePath) return; // 如果移动同一个文件则跳过
         DirectoryUtils.Create(destFilePath, isFilePath: true);
+        Logger.Trace($"剪切文件：{sourceFilePath} → {destFilePath}");
         File.Move(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath));
     }
 
