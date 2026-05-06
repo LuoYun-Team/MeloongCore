@@ -56,21 +56,19 @@ public enum LogBehaviors {
     AlertThenCrash
 }
 
-public interface ILogger {
-    void Log(string message, LogLevels level, LogBehaviors behavior, string filePath);
-    void Log(Exception ex, string? message, LogLevels level, LogBehaviors behavior, string filePath);
-}
-
 public static class Logger {
-    public static ILogger Instance { get; set; } = new ConsoleLogger();
+    public static BaseLogger Instance { get; set; } = new();
 
     // 转发给实例的方法调用
-    // TODO: Trace
     public static void Log(string message, LogLevels level = LogLevels.Info, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "")
         => Instance.Log(message, level, behavior, filePath);
     public static void Log(Exception ex, string? message = null, LogLevels level = LogLevels.Warning, LogBehaviors behavior = LogBehaviors.ToastIfDebug, [CallerFilePath] string filePath = "")
         => Instance.Log(ex, message, level, behavior, filePath);
     public static void Trace(string message, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(message, LogLevels.Trace, behavior, filePath);
+    public static void Trace(Func<string> message, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") {
+        if (Instance.MinLevel > LogLevels.Trace) return;
+        Log(message(), LogLevels.Trace, behavior, filePath);
+    }
     public static void Info(string message, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(message, LogLevels.Info, behavior, filePath);
     public static void Warning(string message, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(message, LogLevels.Warning, behavior, filePath);
     public static void Error(string message, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(message, LogLevels.Error, behavior, filePath);
@@ -81,127 +79,128 @@ public static class Logger {
 }
 
 /// <summary>
-/// 将日志输出到 <see cref="Debug"/> 的 <see cref="ILogger"/> 基础实现。
+/// 最基础的日志实现。
+/// 仅将日志输出到 <see cref="Debug"/>，不实现 <see cref="LogBehaviors"/>。
 /// </summary>
-public class ConsoleLogger : ILogger {
-    /// <summary>
-    /// 在写入日志前对文本进行预处理的处理器。
-    /// </summary>
-    public event Func<string, string>? TextProcessor;
+public class BaseLogger {
 
     /// <summary>
-    /// 最低输出等级，低于此等级的日志将被忽略。默认为 <see cref="LogLevels.Trace"/>。
+    /// 最低日志输出等级，低于此等级的日志将被忽略。
     /// </summary>
     public LogLevels MinLevel { get; set; } = LogLevels.Trace;
 
+    // 核心方法
     public virtual void Log(string message, LogLevels level, LogBehaviors behavior, string filePath) {
-        if (level < MinLevel) return;
+        if (MinLevel > level) return;
         try {
-            Emit(message, level, filePath);
-        } catch { }
+            var formattedMessage = Format(message, level, filePath, null);
+            Output(formattedMessage, level);
+            HandleBehavior(message, formattedMessage, behavior, null);
+        } catch {}
     }
     public virtual void Log(Exception ex, string? message, LogLevels level, LogBehaviors behavior, string filePath) {
-        if (level < MinLevel) return;
+        if (MinLevel > level) return;
         if (ex is ThreadInterruptedException) return;
         try {
-            Emit((message is null ? "" : $"{message}：") + ex.GetDetail(true), level, filePath);
+            var formattedMessage = (message is null ? "" : $"{message}：") + ex.GetDetail(false);
+            formattedMessage = Format(formattedMessage, level, filePath, ex);
+            Output(formattedMessage, level);
+            HandleBehavior(message, formattedMessage, behavior, ex);
         } catch { }
-    }
-
-    private void Emit(string body, LogLevels level, string filePath) {
-        // 构造原始文本
-        string threadName = Thread.CurrentThread.Name is { Length: > 0 } n ? n : "主线程";
-        string file = filePath.AfterLast("\\").BeforeFirst(".");
-        if (file.StartsWithF("Mod")) file = file.AfterFirst("Mod");
-        string text = $"<{threadName}> [{file}] {body}\r\n";
-
-        // 应用处理器
-        if (TextProcessor is not null) foreach (var h in TextProcessor.GetInvocationList().OfType<Func<string, string>>()) text = h(text);
-
-        string timestamp = $"{DateTime.Now:HH':'mm':'ss'.'fff} | ";
-        string debugPrefix = level switch { LogLevels.Trace => "T ", LogLevels.Warning => "W ", LogLevels.Error => "E ", _ => "I " };
-        string formatted = text
-            .ReplaceLineEndings("\n", mergeMultiple: true).Split(['\n'], StringSplitOptions.RemoveEmptyEntries)
-            .Select(t => { t = debugPrefix + timestamp + t; return t; })
-            .Join("\r\n");
-
-        WriteOutput(formatted, level);
     }
 
     /// <summary>
-    /// 将格式化后的日志文本写入额外目标。
-    /// <see cref="ConsoleLogger"/> 不执行额外操作（已由 <see cref="Emit"/> 写入调试控制台）；
-    /// 子类可重写此方法以追加写入更多目标。
+    /// 格式化日志文本。
     /// </summary>
-    protected virtual void WriteOutput(string formattedText, LogLevels level) {
-        Debug.WriteLine(formattedText);
+    protected virtual string Format(string text, LogLevels level, string filePath, Exception? ex) {
+        string prefix = $"{DateTime.Now:HH':'mm':'ss'.'fff} {level.ToString().First()} [{filePath.AfterLast(@"\").BeforeFirst(".")}{(Thread.CurrentThread.Name is null ? "" : $" @ {Thread.CurrentThread.Name}")}] ";
+        return text
+            .ReplaceLineEndings("\n", mergeMultiple: true).Split(['\n'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(t => prefix + t)
+            .Join("\r\n");
     }
+
+    /// <summary>
+    /// 输出格式化后的日志文本。
+    /// </summary>
+    protected virtual void Output(string formattedMessage, LogLevels level) {
+        Debug.WriteLine(formattedMessage);
+    }
+
+    /// <summary>
+    /// 在调用 Log 方法的线程执行 <see cref="LogBehaviors"/>。
+    /// </summary>
+    protected virtual void HandleBehavior(string? rawMessage, string formattedMessage, LogBehaviors behavior, Exception? ex) {
+    }
+
 }
 
 /// <summary>
-/// 在 <see cref="ConsoleLogger"/> 基础上将日志缓冲写入文件的 <see cref="ILogger"/> 实现。
+/// 将日志输出到 <see cref="Debug"/> 并写入指定的文件夹，最多保留 5 个文件。
+/// 不实现 <see cref="LogBehaviors"/>。
 /// </summary>
-public class FileLogger : ConsoleLogger {
-    private readonly ConcurrentQueue<string> logQueue = new();
-    private StreamWriter? logWriter;
+public class FileLogger : BaseLogger {
 
     /// <inheritdoc/>
-    protected override void WriteOutput(string formattedText, LogLevels level) {
-        base.WriteOutput(formattedText, level);
-        logQueue.Enqueue(formattedText);
+    protected override void Output(string formattedText, LogLevels level) {
+        base.Output(formattedText, level);
+        if (!writerAvaliable && queue.Count >= 100) return; // 在 writer 就绪前，最多缓存 100 条日志
+        queue.Enqueue(formattedText);
+        queuedEvent.Set();
     }
 
+    private readonly ConcurrentQueue<string> queue = new();
+    private readonly AutoResetEvent queuedEvent = new(false);
+    private StreamWriter? writer;
+    private volatile bool writerAvaliable = false;
+
     /// <summary>
-    /// 启动日志文件写入。轮换历史日志文件，随后在后台线程持续将缓冲区内容写入 Log1.txt。
+    /// 将日志立即写入文件。
+    /// 不会抛出异常。
     /// </summary>
-    /// <param name="logFolder">日志文件夹路径，以 \ 结尾。</param>
-    /// <param name="onInitFailed">初始化失败时的回调，参数为捕获到的异常。</param>
-    public void LogStart(string logFolder, Action<Exception>? onInitFailed = null) {
+    public void Flush() {
+        try {
+            if (writer is null || !writerAvaliable) return;
+            lock (flushLock) 
+                while (queue.TryDequeue(out string line)) writer.WriteLine(line); // writer 指定了 AutoFlush
+        } catch { }
+    }
+    private readonly object flushLock = new();
+
+    /// <summary>
+    /// 初始化此 Logger。
+    /// 会在新线程中，将之前的日志文件依次后移，最多保留 5 个文件。
+    /// </summary>
+    public FileLogger(string logFolder, string fileNamePrefix = "Log", string fileNameSuffix = ".txt") {
         var thread = new Thread(() => {
-            bool isInitSuccess = true;
+            // 轮转日志文件，将 Log1.txt 留空
             try {
                 for (int i = 4; i >= 1; i--) {
-                    if (FileUtils.Exists(logFolder + $"Log{i}.txt")) {
-                        if (FileUtils.Exists(logFolder + $"Log{i + 1}.txt"))
-                            FileUtils.Delete(logFolder + $"Log{i + 1}.txt");
-                        FileUtils.Copy(logFolder + $"Log{i}.txt", logFolder + $"Log{i + 1}.txt");
-                    }
+                    string newerFile = Path.Combine(logFolder, $"{fileNamePrefix}{i + 1}{fileNameSuffix}");
+                    string olderFile = Path.Combine(logFolder, $"{fileNamePrefix}{i}{fileNameSuffix}");
+                    if (!FileUtils.Exists(olderFile)) continue;
+                    FileUtils.Copy(olderFile, newerFile);
+                    FileUtils.Delete(olderFile);
                 }
-                FileUtils.CreateAsStream(logFolder + "Log1.txt").Dispose();
+            } catch (IOException ex) {
+                Logger.Warning(ex, "可能同时开启了多个程序，这或许会导致未知问题", LogBehaviors.Toast);
             } catch (Exception ex) {
-                isInitSuccess = false;
-                onInitFailed?.Invoke(ex);
+                Logger.Warning(ex, "整理日志文件失败");
             }
+            // 写入新日志文件
             try {
-                logWriter = new StreamWriter(logFolder + "Log1.txt", append: true) { AutoFlush = true };
-            } catch {
-                logWriter = null;
+                writer = new StreamWriter(PathUtils.WithLongPath(Path.Combine(logFolder, $"{fileNamePrefix}1{fileNameSuffix}")), append: true) { AutoFlush = true };
+                writerAvaliable = true;
+                while (true) {
+                    queuedEvent.WaitOne();
+                    Flush();
+                }
+            } catch (Exception ex) {
+                Logger.Warning(ex, "写入日志文件失败", LogBehaviors.Toast);
+                writerAvaliable = false;
             }
-            while (true) {
-                if (isInitSuccess)
-                    LogFlush();
-                else
-                    while (logQueue.TryDequeue(out _)) { } // 清空队列避免内存爆炸
-                Thread.Sleep(50);
-            }
-        }) {
-            Name = "Log Writer",
-            Priority = ThreadPriority.Lowest,
-            IsBackground = true,
-        };
+        }) { Name = nameof(FileLogger), Priority = ThreadPriority.Lowest, IsBackground = true };
         thread.Start();
     }
 
-    /// <summary>
-    /// 将日志队列中的内容立即写入文件。
-    /// </summary>
-    public void LogFlush() {
-        try {
-            if (logWriter is null || logQueue.IsEmpty) return;
-            var sb = new StringBuilder();
-            while (logQueue.TryDequeue(out string? line))
-                sb.Append(line).Append("\r\n");
-            logWriter.Write(sb);
-        } catch { }
-    }
 }
