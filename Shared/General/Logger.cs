@@ -102,7 +102,7 @@ public class BaseLogger {
         if (MinLevel > level) return;
         if (ex is ThreadInterruptedException) return;
         try {
-            var formattedMessage = (message is null ? "" : $"{message}：") + ex.GetDetail(false);
+            var formattedMessage = (message is null ? "" : $"{message}：") + ex.GetDisplay(true);
             formattedMessage = Format(formattedMessage, level, filePath, ex);
             Output(formattedMessage, level);
             HandleBehavior(message, formattedMessage, behavior, ex);

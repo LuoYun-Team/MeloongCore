@@ -10,59 +10,45 @@ public static class ExceptionExtensions {
     }
 
     /// <summary>
-    /// 提取 <paramref name="ex"/> 的详细描述与堆栈信息。返回内容总是多于一行。
+    /// 获取 <paramref name="ex"/> 的用户友好描述。
+    /// 若 <paramref name="showMultilineStacks"/> 为 true，则返回多行的详细描述与堆栈信息；否则不整理堆栈，仅将 <see cref="Exception.Message"/> 汇总到一行。
     /// </summary>
-    /// <param name="onlyRelatedStacks">是否显示所有堆栈，而不是仅与当前。</param>
-    public static string GetDetail(this Exception? ex, bool onlyRelatedStacks = true) {
+    public static string GetDisplay(this Exception? ex, bool showMultilineStacks) {
         if (ex is null) return "无可用错误信息！";
-        return GetSummary(ex, isDetail: true, onlyRelatedStacks);
-    }
-    /// <summary>
-    /// 提取 <paramref name="ex"/> 的简要描述，将信息汇总到一行。
-    /// </summary>
-    public static string GetBrief(this Exception? ex) {
-        if (ex is null) return "无可用错误信息！";
-        return GetSummary(ex, isDetail: false);
-    }
 
-    /// <summary>
-    /// 提取 <paramref name="ex"/> 的描述。
-    /// </summary>
-    public static string GetSummary(Exception ex, bool isDetail, bool onlyRelatedStacks = true) {
-        var innerEx = ex.RootException();
+        // 提取堆栈信息
         var lines = new List<string>();
-        bool isInner = false;
-        for (Exception? cur = ex; cur is not null; cur = cur.InnerException) {
-            if (isDetail) {
-                lines.Add((isInner ? "→ " : "") + cur.Message.ReplaceLineEndings("\r\n", true));
-                if (cur.StackTrace is not null) {
-                    foreach (string stack in cur.StackTrace.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)) {
-                        if (onlyRelatedStacks && !stack.ContainsIgnoreCase("pcl")) continue;
-                        lines.Add(stack.ReplaceLineEndings(""));
-                    }
-                }
-                if (cur.GetType().FullName != "System.Exception") {
-                    lines.Add("   错误类型：" + cur.GetType().FullName);
-                }
+        bool isInnerException = false;
+        for (Exception? currentEx = ex; currentEx is not null; currentEx = currentEx.InnerException) {
+            if (showMultilineStacks) {
+                lines.Add((isInnerException ? "→ " : "") + currentEx.Message.ReplaceLineEndings("\r\n", true));
+                if (currentEx.GetType() != typeof(Exception)) lines.Add("   错误类型：" + currentEx.GetType().FullName);
+                var stackLines = (currentEx.StackTrace?.ReplaceLineEndings("\r", true).Split('\r') ?? [])
+                    .Select(l => l.BeforeFirst("(") + l.AfterFirst(")"))
+                    .Distinct();
+                lines.AddRange(stackLines);
             } else {
-                lines.Add(cur.Message.ReplaceLineEndings(" ", true));
+                lines.Add(currentEx.Message.ReplaceLineEndings(" ", true));
             }
-            isInner = true;
+            isInnerException = true;
         }
 
+        // 分析常见错误原因
         string? commonReason = null;
-        if (innerEx is TypeLoadException or BadImageFormatException or MissingMethodException or NotImplementedException or TypeInitializationException)
+        var rootException = ex.RootException();
+        if (rootException is TypeLoadException or BadImageFormatException or MissingMethodException or NotImplementedException or TypeInitializationException)
             commonReason = "运行环境存在问题。请尝试重新安装 .NET Framework 4.8 然后再试。若无法安装，请先卸载较新版本的 .NET Framework，然后再尝试安装。";
-        else if (innerEx is UnauthorizedAccessException)
-            commonReason = "权限不足。请尝试右键程序，选择以管理员身份运行，或将文件移动到其他文件夹。";
-        else if (innerEx is OutOfMemoryException)
+        else if (rootException is UnauthorizedAccessException)
+            commonReason = "程序权限不足。请尝试右键程序，选择以管理员身份运行，或将文件移动到其他文件夹。";
+        else if (rootException is OutOfMemoryException)
             commonReason = "系统的运行内存不足。请在关闭一部分不需要的程序后再试。";
-        else if (innerEx is System.Net.Sockets.SocketException && lines.Any(l => l.Contains("WSAStartup")))
+        else if (rootException is System.Net.Sockets.SocketException && lines.Any(l => l.Contains("WSAStartup")))
             commonReason = "请尝试卸载中国移动云盘，然后再试。";
         else if (ex.IsNetworkRelated())
             commonReason = "你的网络环境不佳，请稍后再试，或使用 VPN 改善网络环境。";
 
-        if (isDetail) {
+        // 输出
+        if (showMultilineStacks) {
             if (commonReason is null) {
                 return lines.Join("\r\n");
             } else {
@@ -98,4 +84,5 @@ public static class ExceptionExtensions {
             "远程方已关闭传输流", "未能解析此远程名称", "由于目标计算机积极拒绝", "基础连接已经关闭"
         }.Any(k => detail.ContainsIgnoreCase(k));
     }
+
 }
