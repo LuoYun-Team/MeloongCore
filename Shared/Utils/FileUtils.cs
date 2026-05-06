@@ -1,5 +1,4 @@
-﻿using System.IO;
-using System.IO.Compression;
+﻿using System.IO.Compression;
 
 namespace MeloongCore;
 public static class FileUtils {
@@ -207,12 +206,13 @@ public static class FileUtils {
             // ZipSlip 修复
             string outputFilePath = PathUtils.WithLongPath(Path.GetFullPath(Path.Combine(outputDirectory, entry.FullName)));
             if (!outputFilePath.StartsWithF(PathUtils.WithSeparator(PathUtils.WithLongPath(Path.GetFullPath(outputDirectory))), ignoreCase:true))
-                throw new UnauthorizedAccessException($"Zip 文件项 {entry.FullName} 的路径在压缩包之外，这可能导致安全问题");
+                throw new ZipSlipException($"Zip 文件项 {entry.FullName} 的路径在压缩包之外，这可能导致安全问题");
             // 实际的解压
             using var entryStream = entry.Open();
             FileUtils.Write(outputFilePath, entryStream);
         }
     }
+    public class ZipSlipException(string message) : Exception(message) {}
 
     /// <summary>
     /// 将指定文件夹的内容打包为 zip 文件。

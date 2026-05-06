@@ -1,87 +1,86 @@
 ﻿namespace MeloongCore.Extensions;
 public static class ExceptionExtensions {
+
     /// <summary>
-    /// 提取 <paramref name="ex"/> 与其 InnerException 的详细描述与堆栈信息。返回内容总是多于一行。
+    /// 返回该异常最底层的 <see cref="Exception.InnerException"/>。
     /// </summary>
-    /// <param name="showAllStacks">是否必须显示所有堆栈。通常用于判定堆栈信息。</param>
-    public static string GetDetail(this Exception? ex, bool showAllStacks = false) {
-        if (ex is null) return "无可用错误信息！";
-
-        // 获取最底层的异常
-        var outerEx = ex;
-        var innerEx = ex;
-        while (innerEx.InnerException is not null) innerEx = innerEx.InnerException;
-
-        // 获取各级错误的描述与堆栈信息
-        var descList = new List<string>();
-        bool isInner = false;
-        while (ex is not null) {
-            descList.Add((isInner ? "→ " : "") + ex.Message.ReplaceLineEndings("\r\n", true));
-            if (ex.StackTrace is not null) {
-                foreach (string stack in ex.StackTrace.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)) {
-                    if (showAllStacks || stack.ContainsIgnoreCase("pcl"))
-                        descList.Add(stack.ReplaceLineEndings(""));
-                }
-            }
-            if (ex.GetType().FullName != "System.Exception")
-                descList.Add("   错误类型：" + ex.GetType().FullName);
-            ex = ex.InnerException;
-            isInner = true;
-        }
-
-        // 构造输出信息
-        string? usualReason = AnalyzeUsualReason(innerEx, outerEx, descList);
-        if (usualReason is not null) {
-            return usualReason + "\r\n\r\n————————————\r\n详细错误信息：\r\n" + descList.Join("\r\n");
-        } 
-        return descList.Join("\r\n");
+    public static Exception RootException(this Exception ex) {
+        while (ex.InnerException is { } inner) ex = inner;
+        return ex;
     }
 
     /// <summary>
-    /// 提取 <paramref name="ex"/> 与其 InnerException 的描述，汇总到一行。
+    /// 提取 <paramref name="ex"/> 的详细描述与堆栈信息。返回内容总是多于一行。
+    /// </summary>
+    /// <param name="onlyRelatedStacks">是否显示所有堆栈，而不是仅与当前。</param>
+    public static string GetDetail(this Exception? ex, bool onlyRelatedStacks = true) {
+        if (ex is null) return "无可用错误信息！";
+        return GetSummary(ex, isDetail: true, onlyRelatedStacks);
+    }
+    /// <summary>
+    /// 提取 <paramref name="ex"/> 的简要描述，将信息汇总到一行。
     /// </summary>
     public static string GetBrief(this Exception? ex) {
         if (ex is null) return "无可用错误信息！";
-
-        // 获取最底层的异常
-        var outerEx = ex;
-        var innerEx = ex;
-        while (innerEx.InnerException is not null) innerEx = innerEx.InnerException;
-
-        // 获取各级错误的描述
-        var descList = new List<string>();
-        while (ex is not null) {
-            descList.Add(ex.Message.ReplaceLineEndings(" ", true));
-            ex = ex.InnerException;
-        }
-        descList = descList.Distinct().ToList();
-
-        // 构造输出信息
-        string? usualReason = AnalyzeUsualReason(innerEx, outerEx, descList);
-        if (usualReason is not null)
-            return usualReason + "详细错误：" + descList.First();
-        descList.Reverse();
-        return descList.Join(" ← ");
-    }
-
-    private static string? AnalyzeUsualReason(Exception innerEx, Exception outerEx, List<string> descList) {
-        if (innerEx is TypeLoadException or BadImageFormatException or MissingMethodException or NotImplementedException or TypeInitializationException)
-            return "PCL 的运行环境存在问题。请尝试重新安装 .NET Framework 4.8 然后再试。若无法安装，请先卸载较新版本的 .NET Framework，然后再尝试安装。";
-        if (innerEx is UnauthorizedAccessException)
-            return "PCL 的权限不足。请尝试右键 PCL 选择以管理员身份运行。";
-        if (innerEx is OutOfMemoryException)
-            return "你的电脑运行内存不足，导致 PCL 无法继续运行。请在关闭一部分不需要的程序后再试。";
-        if (innerEx is COMException)
-            return "由于操作系统或显卡存在问题，导致出现错误。请尝试重启 PCL。";
-        if (innerEx is System.Net.Sockets.SocketException && descList.Any(l => l.Contains("WSAStartup")))
-            return "请尝试卸载中国移动云盘，然后再试。";
-        if (outerEx.IsNetworkRelated())
-            return "你的网络环境不佳，请稍后再试，或使用 VPN 改善网络环境。";
-        return null;
+        return GetSummary(ex, isDetail: false);
     }
 
     /// <summary>
-    /// 判断某个 <paramref name="ex"/> 是否为网络问题所导致。
+    /// 提取 <paramref name="ex"/> 的描述。
+    /// </summary>
+    public static string GetSummary(Exception ex, bool isDetail, bool onlyRelatedStacks = true) {
+        var innerEx = ex.RootException();
+        var lines = new List<string>();
+        bool isInner = false;
+        for (Exception? cur = ex; cur is not null; cur = cur.InnerException) {
+            if (isDetail) {
+                lines.Add((isInner ? "→ " : "") + cur.Message.ReplaceLineEndings("\r\n", true));
+                if (cur.StackTrace is not null) {
+                    foreach (string stack in cur.StackTrace.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)) {
+                        if (onlyRelatedStacks && !stack.ContainsIgnoreCase("pcl")) continue;
+                        lines.Add(stack.ReplaceLineEndings(""));
+                    }
+                }
+                if (cur.GetType().FullName != "System.Exception") {
+                    lines.Add("   错误类型：" + cur.GetType().FullName);
+                }
+            } else {
+                lines.Add(cur.Message.ReplaceLineEndings(" ", true));
+            }
+            isInner = true;
+        }
+
+        string? commonReason = null;
+        if (innerEx is TypeLoadException or BadImageFormatException or MissingMethodException or NotImplementedException or TypeInitializationException)
+            commonReason = "运行环境存在问题。请尝试重新安装 .NET Framework 4.8 然后再试。若无法安装，请先卸载较新版本的 .NET Framework，然后再尝试安装。";
+        else if (innerEx is UnauthorizedAccessException)
+            commonReason = "权限不足。请尝试右键程序，选择以管理员身份运行，或将文件移动到其他文件夹。";
+        else if (innerEx is OutOfMemoryException)
+            commonReason = "系统的运行内存不足。请在关闭一部分不需要的程序后再试。";
+        else if (innerEx is System.Net.Sockets.SocketException && lines.Any(l => l.Contains("WSAStartup")))
+            commonReason = "请尝试卸载中国移动云盘，然后再试。";
+        else if (ex.IsNetworkRelated())
+            commonReason = "你的网络环境不佳，请稍后再试，或使用 VPN 改善网络环境。";
+
+        if (isDetail) {
+            if (commonReason is null) {
+                return lines.Join("\r\n");
+            } else {
+                return commonReason + "\r\n\r\n————————————\r\n详细错误信息：\r\n" + lines.Join("\r\n");
+            }
+        } else {
+            lines = lines.Distinct().ToList();
+            if (commonReason is null) {
+                lines.Reverse();
+                return lines.Join(" ← ");
+            } else {
+                return commonReason + "详细错误：" + lines.First();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 判断某个 <paramref name="ex"/> 是否为网络连接不良所导致。
     /// </summary>
     public static bool IsNetworkRelated(this Exception ex) {
         // 提取 Message（不能用 GetDetail，因为堆栈的方法参数中就有 timeout 字样）

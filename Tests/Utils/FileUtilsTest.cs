@@ -38,7 +38,7 @@ public class FileUtilsTest : TestWithFolder {
     [InlineData("DotDot ZipSlip.zip")]
     [InlineData("AbsPath ZipSlip.zip")]
     public void Compression_ZipSlip(string testFile) {
-        Assert.Throws<UnauthorizedAccessException>(() => FileUtils.ExtractToDirectory(GetTestFile(testFile), tempFolder));
+        Assert.Throws<FileUtils.ZipSlipException>(() => FileUtils.ExtractToDirectory(GetTestFile(testFile), tempFolder));
     }
 
     #endregion
