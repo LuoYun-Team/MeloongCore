@@ -12,6 +12,24 @@ public static class ExceptionExtensions {
     }
 
     /// <summary>
+    /// 将异常所有的 <see cref="Exception.InnerException"/> 展开。
+    /// 若为 <see cref="AggregateException"/>，也会展开其中所有的子异常。
+    /// </summary>
+    public static IEnumerable<Exception> Flatten(this Exception ex) {
+        var toFlatten = new Stack<Exception>();
+        toFlatten.Push(ex);
+        while (toFlatten.Any()) {
+            var current = toFlatten.Pop();
+            yield return current;
+            if (current is AggregateException ag) {
+                foreach (var inner in ag.InnerExceptions) toFlatten.Push(inner);
+            } else if (current.InnerException is not null) {
+                toFlatten.Push(current.InnerException);
+            }
+        }
+    }
+
+    /// <summary>
     /// 获取 <paramref name="ex"/> 的用户友好描述。
     /// 若 <paramref name="showMultilineStacks"/> 为 true，则返回多行的详细描述与堆栈信息；否则不整理堆栈，仅将 <see cref="Exception.Message"/> 汇总到一行。
     /// </summary>
@@ -62,7 +80,7 @@ public static class ExceptionExtensions {
                 lines.Reverse();
                 return lines.Join(" ← ");
             } else {
-                return commonReason + "详细错误：" + lines.First();
+                return $"{commonReason}（{lines.First()}）";
             }
         }
     }
@@ -73,6 +91,8 @@ public static class ExceptionExtensions {
     public static bool IsBadNetwork(this Exception ex) {
         for (Exception? currentEx = ex; currentEx is not null; currentEx = currentEx.InnerException) {
             if (currentEx is TimeoutException) {
+                return true;
+            } else if (currentEx is TaskCanceledException) {
                 return true;
             } else if (currentEx is HttpRequestCodeException reqEx) {
                 if (reqEx.StatusCode is HttpStatusCode.Forbidden) return false;

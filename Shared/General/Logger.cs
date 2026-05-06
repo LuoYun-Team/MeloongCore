@@ -9,7 +9,6 @@ namespace MeloongCore;
 public enum LogLevels {
     /// <summary>
     /// 追踪。
-    /// 只在调试状态下输出日志信息。
     /// </summary>
     Trace,
     /// <summary>
@@ -59,19 +58,23 @@ public enum LogBehaviors {
 public static class Logger {
     public static BaseLogger Instance { get; set; } = new();
 
-    // 转发给实例的方法调用
-
-    public static void Log(string message, LogLevels level = LogLevels.Info, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "")
+    // 转发给实例的方法包装
+    public static void Log(string message, LogLevels level = LogLevels.Info, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") 
         => Instance.Log(message, level, behavior, filePath);
-    public static void Log(Exception ex, string? message = null, LogLevels level = LogLevels.Warning, LogBehaviors behavior = LogBehaviors.ToastIfDebug, [CallerFilePath] string filePath = "")
-        => Instance.Log(ex, message, level, behavior, filePath);
-
-    public static void Trace(Func<string> message, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") { if (Instance.MinLevel <= LogLevels.Trace) Log(message(), LogLevels.Trace, behavior, filePath); }
     public static void Trace(string message, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(message, LogLevels.Trace, behavior, filePath);
     public static void Info(string message, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(message, LogLevels.Info, behavior, filePath);
     public static void Warning(string message, LogBehaviors behavior = LogBehaviors.ToastIfDebug, [CallerFilePath] string filePath = "") => Log(message, LogLevels.Warning, behavior, filePath);
     public static void Error(string message, LogBehaviors behavior = LogBehaviors.AlertThenFeedback, [CallerFilePath] string filePath = "") => Log(message, LogLevels.Error, behavior, filePath);
-    
+
+    public static void Log(Func<string> messageGetter, LogLevels level = LogLevels.Info, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") {
+        if (Instance.MinLevel <= level) Instance.Log(messageGetter(), level, behavior, filePath); }
+    public static void Trace(Func<string> messageGetter, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(messageGetter, LogLevels.Trace, behavior, filePath);
+    public static void Info(Func<string> messageGetter, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(messageGetter, LogLevels.Info, behavior, filePath);
+    public static void Warning(Func<string> messageGetter, LogBehaviors behavior = LogBehaviors.ToastIfDebug, [CallerFilePath] string filePath = "") => Log(messageGetter, LogLevels.Warning, behavior, filePath);
+    public static void Error(Func<string> messageGetter, LogBehaviors behavior = LogBehaviors.AlertThenFeedback, [CallerFilePath] string filePath = "") => Log(messageGetter, LogLevels.Error, behavior, filePath);
+
+    public static void Log(Exception ex, string? message = null, LogLevels level = LogLevels.Warning, LogBehaviors behavior = LogBehaviors.ToastIfDebug, [CallerFilePath] string filePath = "") 
+        => Instance.Log(ex, message, level, behavior, filePath);
     public static void Trace(Exception ex, string? message = null, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(ex, message, LogLevels.Trace, behavior, filePath);
     public static void Info(Exception ex, string? message = null, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(ex, message, LogLevels.Info, behavior, filePath);
     public static void Warning(Exception ex, string? message = null, LogBehaviors behavior = LogBehaviors.ToastIfDebug, [CallerFilePath] string filePath = "") => Log(ex, message, LogLevels.Warning, behavior, filePath);
@@ -113,7 +116,7 @@ public class BaseLogger {
     /// 格式化日志文本。
     /// </summary>
     protected virtual string Format(string text, LogLevels level, string filePath, Exception? ex) {
-        string prefix = $"{DateTime.Now:HH':'mm':'ss'.'fff} {level.ToString().First()} {(Thread.CurrentThread.Name is null ? "" : $"<{Thread.CurrentThread.Name}> ")}[{filePath.AfterLast(@"\").BeforeFirst(".")}] ";
+        string prefix = $"{DateTime.Now:HH':'mm':'ss'.'fff} {level.ToString().First()} {(Thread.CurrentThread.Name is null ? "" : $"<{Thread.CurrentThread.Name}> ")}[{Path.GetFileName(filePath).BeforeFirst(".")}] ";
         return text
             .ReplaceLineEndings("\n", mergeMultiple: true).Split(['\n'], StringSplitOptions.RemoveEmptyEntries)
             .Select(t => prefix + t)
@@ -139,7 +142,7 @@ public class BaseLogger {
 /// 将日志输出到 <see cref="Debug"/> 并写入指定的文件夹，最多保留 5 个文件。
 /// 不实现 <see cref="LogBehaviors"/>。
 /// </summary>
-public class FileLogger : BaseLogger {
+public class FileLogger : BaseLogger, IDisposable {
 
     /// <inheritdoc/>
     protected override void Output(string formattedText, LogLevels level) {
@@ -205,4 +208,9 @@ public class FileLogger : BaseLogger {
         thread.Start();
     }
 
+    public void Dispose() {
+        writerAvaliable = false;
+        if (writer is not null) ((IDisposable) writer).Dispose();
+        queuedEvent.Dispose();
+    }
 }
