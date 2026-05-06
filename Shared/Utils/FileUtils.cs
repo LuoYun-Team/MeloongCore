@@ -27,7 +27,7 @@ public static class FileUtils {
     /// </summary>
     public static void Write(string filePath, byte[] content) {
         DirectoryUtils.Create(filePath, isFilePath: true);
-        Logger.Trace($"写入文件：{filePath}（{content.Length} 字节）");
+        Logger.Trace(() => $"写入文件：{filePath}（{content.Length} 字节）");
         File.WriteAllBytes(PathUtils.WithLongPath(filePath), content);
     }
 
@@ -39,7 +39,7 @@ public static class FileUtils {
     public static void Write(string filePath, Stream stream) {
         using FileStream fileStream = CreateAsStream(PathUtils.WithLongPath(filePath));
         if (stream.CanSeek && stream.Position != 0) stream.Seek(0, SeekOrigin.Begin);
-        Logger.Trace($"写入文件：{filePath}（{stream.GetType().Name} {stream.Length} 字节）");
+        Logger.Trace(() => $"写入文件：{filePath}（{stream.GetType().Name} {stream.Length} 字节）");
         stream.CopyTo(fileStream);
     }
 
@@ -155,7 +155,7 @@ public static class FileUtils {
     /// </summary>
     public static ZipArchive OpenZip(string zipFilePath) {
         ZipArchive TryOpen(Encoding encoding) {
-            Logger.Trace($"尝试以 {encoding.EncodingName} 编码打开压缩包：{zipFilePath}");
+            Logger.Trace(() => $"尝试以 {encoding.EncodingName} 编码打开压缩包：{zipFilePath}");
             var result = ZipFile.Open(PathUtils.WithLongPath(zipFilePath), ZipArchiveMode.Read, encoding);
             try {
                 _ = result.Entries; // 如果编码有误，会在这里抛出 DecoderFallbackException；如果文件异常，会在这里抛出 InvalidDataException
@@ -251,7 +251,7 @@ public static class FileUtils {
         DirectoryUtils.Create(outputFullPath, isFilePath: true);
         FileUtils.Delete(outputFullPath);
         using var archive = ZipFile.Open(outputFullPath, ZipArchiveMode.Create);
-        Logger.Trace($"创建 zip 文件：{sources.Count} 个文件 → {outputFullPath}\n{sources.Select(p => $"- {p.Value} → {p.Key}").Join('\n')}");
+        Logger.Trace(() => $"创建 zip 文件：{sources.Count} 个文件 → {outputFullPath}\n{sources.Select(p => $"- {p.Value} → {p.Key}").Join('\n')}");
         foreach (var pair in sources) archive.CreateEntryFromFile(PathUtils.WithLongPath(pair.Value), pair.Key.Replace('\\', '/'), CompressionLevel.Optimal);
     }
 

@@ -60,18 +60,18 @@ public static class Logger {
     public static BaseLogger Instance { get; set; } = new();
 
     // 转发给实例的方法调用
+
     public static void Log(string message, LogLevels level = LogLevels.Info, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "")
         => Instance.Log(message, level, behavior, filePath);
     public static void Log(Exception ex, string? message = null, LogLevels level = LogLevels.Warning, LogBehaviors behavior = LogBehaviors.ToastIfDebug, [CallerFilePath] string filePath = "")
         => Instance.Log(ex, message, level, behavior, filePath);
+
+    public static void Trace(Func<string> message, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") { if (Instance.MinLevel <= LogLevels.Trace) Log(message(), LogLevels.Trace, behavior, filePath); }
     public static void Trace(string message, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(message, LogLevels.Trace, behavior, filePath);
-    public static void Trace(Func<string> message, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") {
-        if (Instance.MinLevel > LogLevels.Trace) return;
-        Log(message(), LogLevels.Trace, behavior, filePath);
-    }
     public static void Info(string message, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(message, LogLevels.Info, behavior, filePath);
-    public static void Warning(string message, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(message, LogLevels.Warning, behavior, filePath);
-    public static void Error(string message, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(message, LogLevels.Error, behavior, filePath);
+    public static void Warning(string message, LogBehaviors behavior = LogBehaviors.ToastIfDebug, [CallerFilePath] string filePath = "") => Log(message, LogLevels.Warning, behavior, filePath);
+    public static void Error(string message, LogBehaviors behavior = LogBehaviors.AlertThenFeedback, [CallerFilePath] string filePath = "") => Log(message, LogLevels.Error, behavior, filePath);
+    
     public static void Trace(Exception ex, string? message = null, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(ex, message, LogLevels.Trace, behavior, filePath);
     public static void Info(Exception ex, string? message = null, LogBehaviors behavior = LogBehaviors.None, [CallerFilePath] string filePath = "") => Log(ex, message, LogLevels.Info, behavior, filePath);
     public static void Warning(Exception ex, string? message = null, LogBehaviors behavior = LogBehaviors.ToastIfDebug, [CallerFilePath] string filePath = "") => Log(ex, message, LogLevels.Warning, behavior, filePath);
@@ -113,7 +113,7 @@ public class BaseLogger {
     /// 格式化日志文本。
     /// </summary>
     protected virtual string Format(string text, LogLevels level, string filePath, Exception? ex) {
-        string prefix = $"{DateTime.Now:HH':'mm':'ss'.'fff} {level.ToString().First()} [{filePath.AfterLast(@"\").BeforeFirst(".")}{(Thread.CurrentThread.Name is null ? "" : $" @ {Thread.CurrentThread.Name}")}] ";
+        string prefix = $"{DateTime.Now:HH':'mm':'ss'.'fff} {level.ToString().First()} {(Thread.CurrentThread.Name is null ? "" : $"<{Thread.CurrentThread.Name}> ")}[{filePath.AfterLast(@"\").BeforeFirst(".")}] ";
         return text
             .ReplaceLineEndings("\n", mergeMultiple: true).Split(['\n'], StringSplitOptions.RemoveEmptyEntries)
             .Select(t => prefix + t)
@@ -174,6 +174,7 @@ public class FileLogger : BaseLogger {
     public FileLogger(string logFolder, string fileNamePrefix = "Log", string fileNameSuffix = ".txt") {
         var thread = new Thread(() => {
             // 轮转日志文件，将 Log1.txt 留空
+            Logger.Info("日志初始化开始");
             try {
                 for (int i = 4; i >= 1; i--) {
                     string newerFile = Path.Combine(logFolder, $"{fileNamePrefix}{i + 1}{fileNameSuffix}");
@@ -191,6 +192,7 @@ public class FileLogger : BaseLogger {
             try {
                 writer = new StreamWriter(PathUtils.WithLongPath(Path.Combine(logFolder, $"{fileNamePrefix}1{fileNameSuffix}")), append: true) { AutoFlush = true };
                 writerAvaliable = true;
+                Logger.Info("日志初始化成功");
                 while (true) {
                     queuedEvent.WaitOne();
                     Flush();
