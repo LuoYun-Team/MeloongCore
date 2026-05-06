@@ -39,7 +39,7 @@ public static class ExceptionExtensions {
         // 提取堆栈信息
         var lines = new List<string>();
         bool isInnerException = false;
-        for (Exception? currentEx = ex; currentEx is not null; currentEx = currentEx.InnerException) {
+        foreach (var currentEx in ex.Flatten()) {
             if (showMultilineStacks) {
                 lines.Add((isInnerException ? "→ " : "") + currentEx.Message.ReplaceLineEndings("\r\n", true));
                 if (currentEx.GetType() != typeof(Exception)) lines.Add("   错误类型：" + currentEx.GetType().FullName);
@@ -89,7 +89,7 @@ public static class ExceptionExtensions {
     /// 判断该异常是否是由于网络连接不良导致。
     /// </summary>
     public static bool IsBadNetwork(this Exception ex) {
-        for (Exception? currentEx = ex; currentEx is not null; currentEx = currentEx.InnerException) {
+        foreach (var currentEx in ex.Flatten()) {
             if (currentEx is TimeoutException) {
                 return true;
             } else if (currentEx is TaskCanceledException) {
