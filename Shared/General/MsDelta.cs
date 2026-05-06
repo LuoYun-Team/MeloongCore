@@ -39,7 +39,7 @@ public static class MsDelta {
             throw new Win32Exception();
     }
 
-
+    // API
     [StructLayout(LayoutKind.Sequential)]
     private struct DeltaInput {
         public IntPtr Start;

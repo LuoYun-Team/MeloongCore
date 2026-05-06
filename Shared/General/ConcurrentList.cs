@@ -1,8 +1,7 @@
 ﻿namespace MeloongCore;
 
 /// <summary>
-/// 线程安全的 <see cref="List{T}"/> 实现。
-/// 当调用枚举器时返回一个临时副本，以避免列表在枚举过程中被修改导致异常。
+/// 使用粗粒度锁的线程安全 <see cref="List{T}"/> 实现。
 /// </summary>
 public class ConcurrentList<T> : IList<T>, IList, IEnumerable, IEnumerable<T> {
 
@@ -11,21 +10,19 @@ public class ConcurrentList<T> : IList<T>, IList, IEnumerable, IEnumerable<T> {
 
     // 构造函数
     public ConcurrentList() { }
-    public ConcurrentList(IEnumerable<T> data) => _items = new List<T>(data);
+    public ConcurrentList(IEnumerable<T> data) => _items = new(data);
     public static implicit operator ConcurrentList<T>(List<T> data) => new(data);
-    public static implicit operator List<T>(ConcurrentList<T> data) { lock (data.syncLock) { return new List<T>(data._items); } }
+    public static implicit operator List<T>(ConcurrentList<T> data) { lock (data.syncLock) { return new(data._items); } }
 
     // 枚举器
-    public IEnumerator<T> GetEnumerator() {
-        lock (syncLock) {
-            return _items.ToList().GetEnumerator();
-        }
-    }
-    IEnumerator IEnumerable.GetEnumerator() {
-        lock (syncLock) {
-            return _items.ToList().GetEnumerator();
-        }
-    }
+    /// <summary>
+    /// 返回此列表的副本。
+    /// </summary>
+    public IEnumerator<T> GetEnumerator() { lock (syncLock) return _items.ToList().GetEnumerator(); }
+    /// <summary>
+    /// 返回此列表的副本。
+    /// </summary>
+    IEnumerator IEnumerable.GetEnumerator() { lock (syncLock) return _items.ToList().GetEnumerator(); }
 
     // 成员
     public int Count { get { lock (syncLock) { return _items.Count; } } }

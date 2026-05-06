@@ -30,51 +30,67 @@ public static class EscapeUtils {
     }
 
     /// <summary>
-    /// 正则表达式转义。等同于 Regex.Escape。
+    /// 正则表达式转义。
+    /// 等同于 <see cref="Regex.Escape"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? RegexEscape(string? value) => Regex.Escape(value);
+    public static string? RegexEscape(string? value) 
+        => Regex.Escape(value);
 
     /// <summary>
-    /// 正则表达式去转义。等同于 Regex.Unescape。
+    /// 正则表达式去转义。
+    /// 等同于 <see cref="Regex.Unescape"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? RegexUnescape(string? value) => Regex.Unescape(value);
+    public static string? RegexUnescape(string? value) 
+        => Regex.Unescape(value);
 
     /// <summary>
-    /// URL 转义。等同于 Uri.EscapeDataString。
+    /// URL 转义。
+    /// 等同于 <see cref="Uri.EscapeDataString"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? UrlEscape(string? value) => Uri.EscapeDataString(value);
+    public static string? UrlEscape(string? value) 
+        => Uri.EscapeDataString(value);
 
     /// <summary>
-    /// URL 去转义。等同于 Uri.UnescapeDataString。
+    /// URL 去转义。
+    /// 等同于 <see cref="Uri.UnescapeDataString"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? UrlUnescape(string? value) => Uri.UnescapeDataString(value);
+    public static string? UrlUnescape(string? value) 
+        => Uri.UnescapeDataString(value);
 
     /// <summary>
-    /// 表单转义。等同于 WebUtility.UrlEncode。
+    /// 表单转义。
+    /// 等同于 <see cref="WebUtility.UrlEncode"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? FormUrlEscape(string? value) => WebUtility.UrlEncode(value);
+    public static string? FormUrlEscape(string? value) 
+        => WebUtility.UrlEncode(value);
 
     /// <summary>
-    /// 表单去转义。等同于 WebUtility.UrlDecode。
+    /// 表单去转义。
+    /// 等同于 <see cref="WebUtility.UrlDecode"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? FormUrlUnescape(string? value) => WebUtility.UrlDecode(value);
+    public static string? FormUrlUnescape(string? value) 
+        => WebUtility.UrlDecode(value);
 
     /// <summary>
-    /// HTML 转义。等同于 WebUtility.HtmlEncode。
+    /// HTML 转义。
+    /// 等同于 <see cref="WebUtility.HtmlEncode"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? HtmlEscape(string? value) => WebUtility.HtmlEncode(value);
+    public static string? HtmlEscape(string? value) 
+        => WebUtility.HtmlEncode(value);
 
     /// <summary>
-    /// HTML 去转义。等同于 WebUtility.HtmlDecode。
+    /// HTML 去转义。
+    /// 等同于 <see cref="WebUtility.HtmlDecode"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? HtmlUnescape(string? value) => WebUtility.HtmlDecode(value);
+    public static string? HtmlUnescape(string? value) 
+        => WebUtility.HtmlDecode(value);
 
 }

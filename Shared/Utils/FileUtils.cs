@@ -9,17 +9,15 @@ public static class FileUtils {
     /// 写入文件。
     /// 如果文件或文件夹不存在，则会自动创建。若已存在，则会覆盖原文件。
     /// </summary>
-    public static void Write(string filePath, string text, Encoding? encoding = null) {
-        Write(filePath, (encoding ?? new UTF8Encoding()).GetBytes(text));
-    }
+    public static void Write(string filePath, string text, Encoding? encoding = null) 
+        => Write(filePath, (encoding ?? new UTF8Encoding()).GetBytes(text));
 
     /// <summary>
     /// 写入文件。
     /// 如果文件或文件夹不存在，则会自动创建。若已存在，则会覆盖原文件。
     /// </summary>
-    public static void Write(string filePath, IEnumerable<byte> content) {
-        Write(filePath, [..content]);
-    }
+    public static void Write(string filePath, IEnumerable<byte> content) 
+        => Write(filePath, [.. content]);
 
     /// <summary>
     /// 写入文件。
@@ -94,7 +92,7 @@ public static class FileUtils {
             internalEx?.Throw();
         }
     }
-    // 用于删除到回收站的接口
+    // API
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     static extern int SHCreateItemFromParsingName([MarshalAs(UnmanagedType.LPWStr)] string pszPath, IntPtr pbc, ref Guid riid, [MarshalAs(UnmanagedType.Interface)] out IShellItem ppv);
     [ComImport, Guid("43826D1E-E718-42EE-BC55-A1E261C37BFE"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -132,9 +130,8 @@ public static class FileUtils {
     /// <summary>
     /// 打开该文件的只读 <see cref="FileStream"/>。
     /// </summary>
-    public static FileStream ReadAsStream(string filePath) {
-        return new(PathUtils.WithLongPath(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-    }
+    public static FileStream ReadAsStream(string filePath) 
+        => new(PathUtils.WithLongPath(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
     /// <summary>
     /// 在指定路径创建文件，并打开 <see cref="FileStream"/>。
@@ -260,16 +257,14 @@ public static class FileUtils {
     /// <summary>
     /// 确定指定的文件是否存在。
     /// </summary>
-    public static bool Exists(string filePath) {
-        return File.Exists(PathUtils.WithLongPath(filePath));
-    }
+    public static bool Exists(string filePath) 
+        => File.Exists(PathUtils.WithLongPath(filePath));
 
     /// <summary>
     /// 创建 <see cref="FileInfo"/> 对象。
     /// </summary>
-    public static FileInfo GetInfo(string path) {
-        return new(PathUtils.WithLongPath(path));
-    }
+    public static FileInfo GetInfo(string path) 
+        => new(PathUtils.WithLongPath(path));
 
     /// <summary>
     /// 复制文件。

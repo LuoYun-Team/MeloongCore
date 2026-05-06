@@ -30,17 +30,21 @@ public static class MathUtils {
     /// 转换为 2 到 86 进制的字符串。
     /// 进制参考：含大写字母 36，含大小写字母 62，含大小写字母和特殊符号 86。
     /// </summary>
-    public static string ConvertRadix(this long input, int toRadix) => ConvertRadix((BigInteger) input, toRadix);
+    public static string ConvertRadix(this long input, int toRadix) 
+        => ConvertRadix((BigInteger) input, toRadix);
     /// <summary>
     /// 转换为 2 到 86 进制的字符串。
     /// 进制参考：含大写字母 36，含大小写字母 62，含大小写字母和特殊符号 86。
     /// </summary>
-    public static string ConvertRadix(this int input, int toRadix) => ConvertRadix((BigInteger) input, toRadix);
+    public static string ConvertRadix(this int input, int toRadix) 
+        => ConvertRadix((BigInteger) input, toRadix);
     /// <summary>
     /// 转换为 2 到 86 进制的字符串。
     /// 进制参考：含大写字母 36，含大小写字母 62，含大小写字母和特殊符号 86。
     /// </summary>
-    public static string ConvertRadix(this byte input, int toRadix) => ConvertRadix((BigInteger) input, toRadix);
+    public static string ConvertRadix(this byte input, int toRadix) 
+        => ConvertRadix((BigInteger) input, toRadix);
+
     private static string ConvertRadix(this BigInteger input, int toRadix) {
         const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz/+=!?@#$%^&*()[]{}<>;:',";
         if (toRadix < 2 || toRadix > digits.Length) throw new ArgumentOutOfRangeException(nameof(toRadix), $"{nameof(toRadix)} must be between 2 and 86.");
@@ -76,8 +80,8 @@ public static class MathUtils {
     /// 在一个范围中进行线性插值。
     /// 返回值将被舍入到小数点后 7 位，以解决浮点数误差问题。
     /// </summary>
-    public static double Lerp(double start, double end, double percentage) => 
-        Math.Round(start + (end - start) * percentage, 7);
+    public static double Lerp(double start, double end, double percentage)
+        => Math.Round(start + (end - start) * percentage, 7);
 
     /// <summary>
     /// 计算二阶贝塞尔曲线。

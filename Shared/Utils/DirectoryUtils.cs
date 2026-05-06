@@ -16,16 +16,14 @@ public static class DirectoryUtils {
     /// <summary>
     /// 判断文件夹是否存在。
     /// </summary>
-    public static bool Exists(string path) {
-        return Directory.Exists(PathUtils.WithLongPath(path));
-    }
+    public static bool Exists(string path) 
+        => Directory.Exists(PathUtils.WithLongPath(path));
 
     /// <summary>
     /// 创建 <see cref="DirectoryInfo"/> 对象。
     /// </summary>
-    public static DirectoryInfo GetInfo(string path) {
-        return new(PathUtils.WithLongPath(path));
-    }
+    public static DirectoryInfo GetInfo(string path) 
+        => new(PathUtils.WithLongPath(path));
 
     /// <summary>
     /// 返回指定路径下的所有文件，不以 \\?\ 开头。

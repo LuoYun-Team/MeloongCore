@@ -13,7 +13,3 @@ public class HttpRequestCodeException(string message, HttpStatusCode statusCode,
     /// </summary>
     public string? Response { get; set; } = response;
 }
-
-public static class HttpUtils {
-
-}

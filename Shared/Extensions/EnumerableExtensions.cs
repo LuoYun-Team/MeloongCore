@@ -166,7 +166,8 @@ public static class EnumerableExtensions {
     /// 从 <see cref="ConcurrentDictionary{TKey, TValue}"/> 中移除具有指定键的元素。
     /// 返回是否确实移除了元素。
     /// </summary>
-    public static bool Remove<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> dict, TKey key) => dict.TryRemove(key, out _);
+    public static bool Remove<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> dict, TKey key) 
+        => dict.TryRemove(key, out _);
 
     /// <summary>
     /// 将二维数组转换为字典。
@@ -182,8 +183,8 @@ public static class EnumerableExtensions {
     /// <summary>
     /// 尝试从字典中获取某项，如果该项不存在，则返回默认值。
     /// </summary>
-    public static TValue GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> dict, TKey key, TValue defaultValue = default!) =>
-        dict.TryGetValue(key, out var result) ? result : defaultValue;
+    public static TValue GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> dict, TKey key, TValue defaultValue = default!) 
+        => dict.TryGetValue(key, out var result) ? result : defaultValue;
 
     /// <summary>
     /// 将值添加到字典的对应项的列表中。

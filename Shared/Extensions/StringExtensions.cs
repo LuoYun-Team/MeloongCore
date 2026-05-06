@@ -6,86 +6,76 @@ public static class StringExtensions {
     #region 区域性 / 大小写 简化
 
     /// <summary>
-    /// 高速的 StartsWith。
+    /// 非区域性的 <see cref="string.StartsWith(string)"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool StartsWithF(this string? value, string prefix, bool ignoreCase = false) {
-        if (value is null) return false;
-        return value.StartsWith(prefix, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
-    }
+    public static bool StartsWithF(this string? value, string prefix, bool ignoreCase = false) 
+        => value?.StartsWith(prefix, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) ?? false;
     /// <summary>
-    /// 高速的 StartsWith。
+    /// 判断字符串是否以 <paramref name="prefix"/> 开头。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool StartsWithF(this string? value, char prefix, bool ignoreCase = false) {
-        if (value is null) return false;
-        return value.StartsWith(prefix.ToString(), ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
-    }
+    public static bool StartsWithF(this string? value, char prefix, bool ignoreCase = false) 
+        => value?.StartsWith(prefix.ToString(), ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) ?? false;
     /// <summary>
-    /// 高速的 EndsWith。
+    /// 非区域性的 <see cref="string.EndsWith(string)"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool EndsWithF(this string? value, string suffix, bool ignoreCase = false) {
-        if (value is null) return false;
-        return value.EndsWith(suffix, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
-    }
+    public static bool EndsWithF(this string? value, string suffix, bool ignoreCase = false) 
+        => value?.EndsWith(suffix, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) ?? false;
     /// <summary>
-    /// 高速的 EndsWith。
+    /// 判断字符串是否以 <paramref name="suffix"/> 结尾。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool EndsWithF(this string? value, char suffix, bool ignoreCase = false) {
-        if (value is null) return false;
-        return value.EndsWith(suffix.ToString(), ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
-    }
+    public static bool EndsWithF(this string? value, char suffix, bool ignoreCase = false) 
+        => value?.EndsWith(suffix.ToString(), ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) ?? false;
 
     /// <summary>
-    /// 忽略大小写的 Contains。
+    /// 忽略大小写的 <see cref="string.Contains(string)"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool ContainsIgnoreCase(this string value, string subString) {
-        return value.IndexOf(subString, StringComparison.OrdinalIgnoreCase) >= 0;
-    }
+    public static bool ContainsIgnoreCase(this string value, string subString) 
+        => value.IndexOf(subString, StringComparison.OrdinalIgnoreCase) >= 0;
+
 
     /// <summary>
-    /// 高速的 IndexOf。
+    /// 非区域性的 <see cref="string.IndexOf(string)"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int IndexOfF(this string value, string subString, bool ignoreCase = false) {
-        return value.IndexOf(subString, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
-    }
+    public static int IndexOfF(this string value, string subString, bool ignoreCase = false) 
+        => value.IndexOf(subString, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
     /// <summary>
-    /// 高速的 IndexOf。
+    /// 非区域性的 <see cref="string.IndexOf(string, int)"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int IndexOfF(this string value, string subString, int startIndex, bool ignoreCase = false) {
-        return value.IndexOf(subString, startIndex, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
-    }
+    public static int IndexOfF(this string value, string subString, int startIndex, bool ignoreCase = false) 
+        => value.IndexOf(subString, startIndex, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
     /// <summary>
-    /// 高速的 LastIndexOf。
+    /// 非区域性的 <see cref="string.LastIndexOf(string)"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int LastIndexOfF(this string value, string subString, bool ignoreCase = false) {
-        return value.LastIndexOf(subString, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
-    }
+    public static int LastIndexOfF(this string value, string subString, bool ignoreCase = false) 
+        => value.LastIndexOf(subString, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
     /// <summary>
-    /// 高速的 LastIndexOf。
+    /// 非区域性的 <see cref="string.LastIndexOf(string, int)"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int LastIndexOfF(this string value, string subString, int startIndex, bool ignoreCase = false) {
-        return value.LastIndexOf(subString, startIndex, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
-    }
+    public static int LastIndexOfF(this string value, string subString, int startIndex, bool ignoreCase = false) 
+        => value.LastIndexOf(subString, startIndex, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
     /// <summary>
-    /// ToLowerInvariant 的简略写法。
+    /// <see cref="string.ToLowerInvariant"/> 的简略写法。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string Lower(this string str) => str.ToLowerInvariant();
+    public static string Lower(this string str) 
+        => str.ToLowerInvariant();
     /// <summary>
-    /// ToUpperInvariant 的简略写法。
+    /// <see cref="string.ToUpperInvariant"/> 的简略写法。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string Upper(this string str) => str.ToUpperInvariant();
+    public static string Upper(this string str) 
+        => str.ToUpperInvariant();
 
     #endregion
 
@@ -172,16 +162,15 @@ public static class StringExtensions {
     /// 替换字符串中的内容。
     /// 仅当需要替换时，才调用 <paramref name="newValueGetter"/> 获取结果字符串。
     /// </summary>
-    public static string Replace(this string str, string oldValue, Func<string> newValueGetter) =>
-        str.Contains(oldValue) ? str.Replace(oldValue, newValueGetter()) : str;
+    public static string Replace(this string str, string oldValue, Func<string> newValueGetter) 
+        => str.Contains(oldValue) ? str.Replace(oldValue, newValueGetter()) : str;
 
     /// <summary>
     /// 将字符串中的换行符统一替换为指定字符。
     /// 若指定了 <paramref name="mergeMultiple"/>，会将多个连续换行符仅替换为一个目标内容。
     /// </summary>
-    public static string ReplaceLineEndings(this string input, string newValue, bool mergeMultiple = false) {
-        return (mergeMultiple ? regexLineEndingAndMerge : regexLineEnding).Replace(input, newValue.Replace("$", "$$")); // 避免识别成捕获组
-    }
+    public static string ReplaceLineEndings(this string input, string newValue, bool mergeMultiple = false) 
+        => (mergeMultiple ? regexLineEndingAndMerge : regexLineEnding).Replace(input, newValue.Replace("$", "$$")); // 避免识别成捕获组
     private static readonly Regex regexLineEndingAndMerge = new(@"(?:\r\n|[\n\r\f\u0085\u2028\u2029])+", RegexOptions.Compiled);
     private static readonly Regex regexLineEnding = new(@"\r\n|[\n\r\f\u0085\u2028\u2029]", RegexOptions.Compiled);
 
@@ -207,6 +196,7 @@ public static class StringExtensions {
     /// <summary>
     /// 该字符串中的字符是否均为 ASCII 字符。
     /// </summary>
-    public static bool IsAsciiOnly(this string input) => input.All(c => c < 128);
+    public static bool IsAsciiOnly(this string input) 
+        => input.All(c => c < 128);
 
 }
