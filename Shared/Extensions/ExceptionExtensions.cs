@@ -1,4 +1,6 @@
-﻿namespace MeloongCore.Extensions;
+﻿using System.Net.Sockets;
+
+namespace MeloongCore.Extensions;
 public static class ExceptionExtensions {
 
     /// <summary>
@@ -44,7 +46,7 @@ public static class ExceptionExtensions {
             commonReason = "系统的运行内存不足。请在关闭一部分不需要的程序后再试。";
         else if (rootException is System.Net.Sockets.SocketException && lines.Any(l => l.Contains("WSAStartup")))
             commonReason = "请尝试卸载中国移动云盘，然后再试。";
-        else if (ex.IsNetworkRelated())
+        else if (ex.IsBadNetwork())
             commonReason = "你的网络环境不佳，请稍后再试，或使用 VPN 改善网络环境。";
 
         // 输出
@@ -52,7 +54,7 @@ public static class ExceptionExtensions {
             if (commonReason is null) {
                 return lines.Join("\r\n");
             } else {
-                return commonReason + "\r\n\r\n————————————\r\n详细错误信息：\r\n" + lines.Join("\r\n");
+                return commonReason + "\r\n\r\n——————— 详细错误信息 ———————\r\n" + lines.Join("\r\n");
             }
         } else {
             lines = lines.Distinct().ToList();
@@ -66,23 +68,30 @@ public static class ExceptionExtensions {
     }
 
     /// <summary>
-    /// 判断某个 <paramref name="ex"/> 是否为网络连接不良所导致。
+    /// 判断该异常是否是由于网络连接不良导致。
     /// </summary>
-    public static bool IsNetworkRelated(this Exception ex) {
-        // 提取 Message（不能用 GetDetail，因为堆栈的方法参数中就有 timeout 字样）
-        string detail = "";
-        var cur = ex;
-        detail += cur.Message;
-        while (cur.InnerException is not null) {
-            cur = cur.InnerException;
-            detail += cur.Message;
+    public static bool IsBadNetwork(this Exception ex) {
+        for (Exception? currentEx = ex; currentEx is not null; currentEx = currentEx.InnerException) {
+            if (currentEx is TimeoutException) {
+                return true;
+            } else if (currentEx is HttpRequestCodeException reqEx) {
+                if (reqEx.StatusCode is HttpStatusCode.Forbidden) return false;
+                if (reqEx.StatusCode is HttpStatusCode.RequestTimeout) return true;
+            } else if (currentEx is WebException webEx) {
+                if (webEx.Response is HttpWebResponse response) {
+                    if (response.StatusCode is HttpStatusCode.Forbidden) return false;
+                    if (response.StatusCode is HttpStatusCode.RequestTimeout) return true;
+                }
+                if (webEx.Status is WebExceptionStatus.NameResolutionFailure or WebExceptionStatus.ConnectFailure or WebExceptionStatus.ReceiveFailure or 
+                    WebExceptionStatus.SendFailure or WebExceptionStatus.ConnectionClosed or WebExceptionStatus.KeepAliveFailure or WebExceptionStatus.Timeout or 
+                    WebExceptionStatus.ProxyNameResolutionFailure) return true;
+            } else if (currentEx is SocketException socketEx) {
+                if (socketEx.SocketErrorCode is SocketError.NetworkDown or SocketError.NetworkUnreachable or SocketError.NetworkReset or SocketError.ConnectionAborted or 
+                    SocketError.ConnectionReset or SocketError.TimedOut or SocketError.ConnectionRefused or SocketError.HostDown or SocketError.HostUnreachable or 
+                    SocketError.HostNotFound or SocketError.TryAgain or SocketError.NoData) return true;
+            }
         }
-        // 判断
-        if (detail.Contains("(403)")) return false;
-        return new[] {
-            "(408)", "超时", "timeout", "网络请求失败", "连接尝试失败", "远程主机强迫关闭了",
-            "远程方已关闭传输流", "未能解析此远程名称", "由于目标计算机积极拒绝", "基础连接已经关闭"
-        }.Any(k => detail.ContainsIgnoreCase(k));
+        return false;
     }
 
 }
