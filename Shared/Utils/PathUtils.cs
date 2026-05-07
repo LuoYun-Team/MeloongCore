@@ -10,14 +10,6 @@ public static class PathUtils {
         => folder + (folder.EndsWithF(Path.DirectorySeparatorChar) || folder.EndsWithF(Path.AltDirectorySeparatorChar) ? "" : Path.DirectorySeparatorChar);
 
     /// <summary>
-    /// 确保路径使用指定的文件夹分隔符，且末尾包含指定的文件夹分隔符。
-    /// </summary>
-    public static string WithSeparator(string folder, char separator) {
-        folder = folder.Replace(Path.DirectorySeparatorChar, separator).Replace(Path.AltDirectorySeparatorChar, separator);
-        return folder + (folder.EndsWithF(separator) ? "" : separator);
-    }
-
-    /// <summary>
     /// 确保路径的结尾不包含文件夹分隔符。
     /// </summary>
     public static string WithoutSeparator(string folder) 
@@ -33,7 +25,7 @@ public static class PathUtils {
     /// </summary>
     public static string ToShortPath(string fullName, bool keepFileName = false) {
         if (string.IsNullOrEmpty(fullName)) return fullName;
-        fullName = PathUtils.WithoutLongPath( fullName.Replace('/', '\\'));
+        fullName = PathUtils.WithoutLongPath(fullName.Replace('/', '\\'));
         if (fullName.Length <= 200) return fullName;
 
         // 保留文件名

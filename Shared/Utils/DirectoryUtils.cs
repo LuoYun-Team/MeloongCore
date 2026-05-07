@@ -64,8 +64,8 @@ public static class DirectoryUtils {
             progressHandler?.Invoke(1);
             return;
         }
-        sourceDirName = PathUtils.WithoutLongPath(PathUtils.WithSeparator(sourceDirName, Path.DirectorySeparatorChar));
-        destDirName = PathUtils.WithoutLongPath(PathUtils.WithSeparator(destDirName, Path.DirectorySeparatorChar));
+        sourceDirName = PathUtils.WithoutLongPath(PathUtils.WithSeparator(sourceDirName)).Replace("/", @"\");
+        destDirName = PathUtils.WithoutLongPath(PathUtils.WithSeparator(destDirName)).Replace("/", @"\");
         int doneCount = 0;
         Lazy<int> totalCount = new(() => DirectoryUtils.GetFiles(sourceDirName).Count());
         Logger.Trace($"复制文件夹：{sourceDirName} → {destDirName}");
