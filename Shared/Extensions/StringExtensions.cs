@@ -238,7 +238,6 @@ public static class StringExtensions {
     /// <summary>
     /// 读取 <see cref="Stream"/> 中的内容，并解码为字符串。
     /// 会将流的位置主动重置到开头。
-    /// 若未指定 <paramref name="encoding"/>，会自动判断编码。
     /// </summary>
     public static string ReadString(this Stream stream, Encoding? encoding = null) {
         using var memoryStream = new MemoryStream();
@@ -249,7 +248,6 @@ public static class StringExtensions {
 
     /// <summary>
     /// 将 <paramref name="bytes"/> 解码为字符串。
-    /// 若未指定 <paramref name="encoding"/>，会自动判断编码。
     /// </summary>
     public static string GetString(this byte[] bytes, Encoding? encoding = null) {
         if (encoding is not null) return encoding.GetString(bytes);

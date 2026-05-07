@@ -6,38 +6,59 @@ public static class FileUtils {
     #region 读取
 
     /// <summary>
-    /// 读取文件中的所有字节。
+    /// 打开指定文件的只读 <see cref="FileStream"/>。
+    /// </summary>
+    public static FileStream ReadAsStream(string filePath)
+        => new(PathUtils.WithLongPath(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+
+    /// <summary>
+    /// 读取文件中的所有内容。
     /// </summary>
     public static byte[] ReadAsBytes(string filePath)
         => File.ReadAllBytes(PathUtils.WithLongPath(filePath));
 
     /// <summary>
-    /// 打开该文件的只读 <see cref="FileStream"/>。
+    /// 读取文件中的所有内容。
     /// </summary>
-    public static FileStream ReadAsStream(string filePath)
-        => new(PathUtils.WithLongPath(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+    public static string ReadAsString(string filePath, Encoding? encoding = null)
+        => FileUtils.ReadAsBytes(filePath).GetString(encoding);
+
+    /// <summary>
+    /// 读取文件中的所有内容，并按行分割。
+    /// </summary>
+    public static string[] ReadAsLines(string filePath, Encoding? encoding = null)
+        => FileUtils.ReadAsString(filePath, encoding).ReplaceLineEndings("\n").Split('\n');
 
     #endregion
 
-    #region 写入
+    #region 创建 / 写入
 
     /// <summary>
-    /// 写入文件。
-    /// 如果文件或文件夹不存在，则会自动创建。若已存在，则会覆盖原文件。
+    /// 创建文件，并打开 <see cref="FileStream"/>。
+    /// </summary>
+    public static FileStream CreateAsStream(string filePath) {
+        DirectoryUtils.Create(filePath, isFilePath: true);
+        Logger.Trace($"创建文件流：{filePath}");
+        return new(PathUtils.WithLongPath(filePath), FileMode.Create);
+    }
+
+    /// <summary>
+    /// 创建文件，并将 <paramref name="text" /> 写入文件。
+    /// 若文件已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, string text, Encoding? encoding = null) 
         => Write(filePath, (encoding ?? new UTF8Encoding()).GetBytes(text));
 
     /// <summary>
-    /// 写入文件。
-    /// 如果文件或文件夹不存在，则会自动创建。若已存在，则会覆盖原文件。
+    /// 创建文件，并将 <paramref name="content" /> 写入文件。
+    /// 若文件已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, IEnumerable<byte> content) 
         => Write(filePath, [.. content]);
 
     /// <summary>
-    /// 写入文件。
-    /// 如果文件或文件夹不存在，则会自动创建。若已存在，则会覆盖原文件。
+    /// 创建文件，并将 <paramref name="content" /> 写入文件。
+    /// 若文件已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, byte[] content) {
         DirectoryUtils.Create(filePath, isFilePath: true);
@@ -46,9 +67,9 @@ public static class FileUtils {
     }
 
     /// <summary>
-    /// 将 <paramref name="stream" /> 写入文件。
+    /// 创建文件，并将 <paramref name="stream" /> 写入文件。
     /// 会将流的位置主动重置到开头。
-    /// 如果文件或文件夹不存在，则会自动创建。若已存在，则会覆盖原文件。
+    /// 若文件已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, Stream stream) {
         using FileStream fileStream = FileUtils.CreateAsStream(filePath);
@@ -290,15 +311,6 @@ public static class FileUtils {
     /// </summary>
     public static bool Exists(string filePath) 
         => File.Exists(PathUtils.WithLongPath(filePath));
-
-    /// <summary>
-    /// 在指定路径创建文件，并打开 <see cref="FileStream"/>。
-    /// </summary>
-    public static FileStream CreateAsStream(string filePath) {
-        DirectoryUtils.Create(filePath, isFilePath: true);
-        Logger.Trace($"创建文件流：{filePath}");
-        return new(PathUtils.WithLongPath(filePath), FileMode.Create);
-    }
 
     /// <summary>
     /// 获取 <see cref="FileInfo"/> 对象。
