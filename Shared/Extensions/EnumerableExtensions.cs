@@ -235,10 +235,8 @@ public static class EnumerableExtensions {
     /// 对集合的每个元素执行指定操作。
     /// </summary>
     public static IEnumerable<T> ForAll<T>(this IEnumerable<T> source, Action<T> action) {
-        foreach (T item in source) {
-            action(item);
-            yield return item;
-        }
+        foreach (T item in source) action(item);
+        return source;
     }
 
 }
