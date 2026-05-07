@@ -174,6 +174,12 @@ public static class StringExtensions {
     private static readonly Regex regexLineEndingAndMerge = new(@"(?:\r\n|[\n\r\f\u0085\u2028\u2029])+", RegexOptions.Compiled);
     private static readonly Regex regexLineEnding = new(@"\r\n|[\n\r\f\u0085\u2028\u2029]", RegexOptions.Compiled);
 
+    /// <summary>
+    /// 将字符串分割为多行。
+    /// </summary>
+    public static string[] SplitLines(this string input, bool skipEmptyLines = false) 
+        => input.ReplaceLineEndings("\n").Split(['\n'], skipEmptyLines ? StringSplitOptions.RemoveEmptyEntries : StringSplitOptions.None);
+
     #endregion
 
     #region 正则

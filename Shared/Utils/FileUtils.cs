@@ -26,8 +26,8 @@ public static class FileUtils {
     /// <summary>
     /// 读取文件中的所有内容，并按行分割。
     /// </summary>
-    public static string[] ReadAsLines(string filePath, Encoding? encoding = null)
-        => FileUtils.ReadAsString(filePath, encoding).ReplaceLineEndings("\n").Split('\n');
+    public static string[] ReadAsLines(string filePath, bool skipEmptyLines = false, Encoding? encoding = null)
+        => FileUtils.ReadAsString(filePath, encoding).SplitLines(skipEmptyLines);
 
     #endregion
 
@@ -47,14 +47,14 @@ public static class FileUtils {
     /// 若文件已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, string text, Encoding? encoding = null) 
-        => Write(filePath, (encoding ?? new UTF8Encoding()).GetBytes(text));
+        => FileUtils.Write(filePath, (encoding ?? new UTF8Encoding()).GetBytes(text));
 
     /// <summary>
     /// 创建文件，并将 <paramref name="content" /> 写入文件。
     /// 若文件已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, IEnumerable<byte> content) 
-        => Write(filePath, [.. content]);
+        => FileUtils.Write(filePath, [.. content]);
 
     /// <summary>
     /// 创建文件，并将 <paramref name="content" /> 写入文件。
