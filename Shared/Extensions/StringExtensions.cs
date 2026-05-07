@@ -185,7 +185,7 @@ public static class StringExtensions {
         try {
             return Regex.Matches(str, pattern, options).Cast<Match>().Select(m => m.Value);
         } catch (Exception ex) {
-            Logger.Warning(ex, $"{nameof(RegexSearch)} 失败（{pattern}）");
+            Logger.Warn(ex, $"{nameof(RegexSearch)} 失败（{pattern}）");
             return [];
         }
     }
@@ -198,7 +198,7 @@ public static class StringExtensions {
             var match = Regex.Match(str, pattern, options);
             return match.Success ? match.Value : null;
         } catch (Exception ex) {
-            Logger.Warning(ex, $"{nameof(RegexSeek)} 失败（{pattern}）");
+            Logger.Warn(ex, $"{nameof(RegexSeek)} 失败（{pattern}）");
             return null;
         }
     }
@@ -210,7 +210,7 @@ public static class StringExtensions {
         try {
             return Regex.IsMatch(str, pattern, options);
         } catch (Exception ex) {
-            Logger.Warning(ex, $"{nameof(RegexCheck)} 失败（{pattern}）");
+            Logger.Warn(ex, $"{nameof(RegexCheck)} 失败（{pattern}）");
             return false;
         }
     }

@@ -1,4 +1,5 @@
-﻿using System.IO.Compression;
+﻿using System.IO;
+using System.IO.Compression;
 
 namespace MeloongCore;
 public static class FileUtils {
@@ -271,9 +272,14 @@ public static class FileUtils {
     /// <summary>
     /// 复制文件。
     /// 会创建对应文件夹、覆盖已有的文件。
+    /// 若原文件不存在，则不执行。
     /// </summary>
     public static void Copy(string sourceFilePath, string destFilePath) {
         if (sourceFilePath == destFilePath) return; // 如果复制同一个文件则跳过
+        if (!FileUtils.Exists(sourceFilePath)) {
+            Logger.Info($"尝试复制文件，但原文件不存在，已跳过复制：{sourceFilePath} → {destFilePath}");
+            return;
+        }
         DirectoryUtils.Create(destFilePath, isFilePath: true);
         Logger.Trace($"复制文件：{sourceFilePath} → {destFilePath}");
         File.Copy(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath), true);

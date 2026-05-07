@@ -4,10 +4,18 @@ public static class PathUtils {
     #region 分隔符
 
     /// <summary>
-    /// 确保路径的结尾包含文件夹分隔符。
+    /// 确保路径的末尾包含任意文件夹分隔符。
     /// </summary>
     public static string WithSeparator(string folder) 
-        => folder.EndsWithF(Path.DirectorySeparatorChar) || folder.EndsWithF(Path.AltDirectorySeparatorChar) ? folder : folder + Path.DirectorySeparatorChar;
+        => folder + (folder.EndsWithF(Path.DirectorySeparatorChar) || folder.EndsWithF(Path.AltDirectorySeparatorChar) ? "" : Path.DirectorySeparatorChar);
+
+    /// <summary>
+    /// 确保路径使用指定的文件夹分隔符，且末尾包含指定的文件夹分隔符。
+    /// </summary>
+    public static string WithSeparator(string folder, char separator) {
+        folder = folder.Replace(Path.DirectorySeparatorChar, separator).Replace(Path.AltDirectorySeparatorChar, separator);
+        return folder + (folder.EndsWithF(separator) ? "" : separator);
+    }
 
     /// <summary>
     /// 确保路径的结尾不包含文件夹分隔符。

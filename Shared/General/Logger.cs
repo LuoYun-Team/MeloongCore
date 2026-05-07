@@ -6,24 +6,7 @@ namespace MeloongCore;
 /// <summary>
 /// 日志等级。
 /// </summary>
-public enum LogLevel {
-    /// <summary>
-    /// 追踪。
-    /// </summary>
-    Trace,
-    /// <summary>
-    /// 信息。
-    /// </summary>
-    Info,
-    /// <summary>
-    /// 警告。
-    /// </summary>
-    Warning,
-    /// <summary>
-    /// 错误。
-    /// </summary>
-    Error
-}
+public enum LogLevel { Trace, Info, Warn, Error }
 
 /// <summary>
 /// 输出日志时执行的错误汇报行为。
@@ -65,8 +48,8 @@ public static class Logger {
         => Log(message, LogLevel.Trace, behavior, filePath);
     public static void Info(string message, LogBehavior behavior = LogBehavior.None, [CallerFilePath] string filePath = "") 
         => Log(message, LogLevel.Info, behavior, filePath);
-    public static void Warning(string message, LogBehavior behavior = LogBehavior.ToastIfDebug, [CallerFilePath] string filePath = "") 
-        => Log(message, LogLevel.Warning, behavior, filePath);
+    public static void Warn(string message, LogBehavior behavior = LogBehavior.ToastIfDebug, [CallerFilePath] string filePath = "") 
+        => Log(message, LogLevel.Warn, behavior, filePath);
     public static void Error(string message, LogBehavior behavior = LogBehavior.AlertThenFeedback, [CallerFilePath] string filePath = "") 
         => Log(message, LogLevel.Error, behavior, filePath);
 
@@ -76,19 +59,19 @@ public static class Logger {
         => Log(messageGetter, LogLevel.Trace, behavior, filePath);
     public static void Info(Func<string> messageGetter, LogBehavior behavior = LogBehavior.None, [CallerFilePath] string filePath = "") 
         => Log(messageGetter, LogLevel.Info, behavior, filePath);
-    public static void Warning(Func<string> messageGetter, LogBehavior behavior = LogBehavior.ToastIfDebug, [CallerFilePath] string filePath = "") 
-        => Log(messageGetter, LogLevel.Warning, behavior, filePath);
+    public static void Warn(Func<string> messageGetter, LogBehavior behavior = LogBehavior.ToastIfDebug, [CallerFilePath] string filePath = "") 
+        => Log(messageGetter, LogLevel.Warn, behavior, filePath);
     public static void Error(Func<string> messageGetter, LogBehavior behavior = LogBehavior.AlertThenFeedback, [CallerFilePath] string filePath = "") 
         => Log(messageGetter, LogLevel.Error, behavior, filePath);
 
-    public static void Log(Exception ex, string? message = null, LogLevel level = LogLevel.Warning, LogBehavior behavior = LogBehavior.ToastIfDebug, [CallerFilePath] string filePath = "") 
+    public static void Log(Exception ex, string? message = null, LogLevel level = LogLevel.Warn, LogBehavior behavior = LogBehavior.ToastIfDebug, [CallerFilePath] string filePath = "") 
         => Instance.Log(ex, message, level, behavior, filePath);
     public static void Trace(Exception ex, string? message = null, LogBehavior behavior = LogBehavior.None, [CallerFilePath] string filePath = "") 
         => Log(ex, message, LogLevel.Trace, behavior, filePath);
     public static void Info(Exception ex, string? message = null, LogBehavior behavior = LogBehavior.None, [CallerFilePath] string filePath = "") 
         => Log(ex, message, LogLevel.Info, behavior, filePath);
-    public static void Warning(Exception ex, string? message = null, LogBehavior behavior = LogBehavior.ToastIfDebug, [CallerFilePath] string filePath = "") 
-        => Log(ex, message, LogLevel.Warning, behavior, filePath);
+    public static void Warn(Exception ex, string? message = null, LogBehavior behavior = LogBehavior.ToastIfDebug, [CallerFilePath] string filePath = "") 
+        => Log(ex, message, LogLevel.Warn, behavior, filePath);
     public static void Error(Exception ex, string? message = null, LogBehavior behavior = LogBehavior.AlertThenFeedback, [CallerFilePath] string filePath = "") 
         => Log(ex, message, LogLevel.Error, behavior, filePath);
 
@@ -224,9 +207,9 @@ public class FileLogger : BaseLogger, IDisposable {
                     FileUtils.Delete(olderFile);
                 }
             } catch (IOException ex) {
-                Logger.Warning(ex, "可能同时开启了多个程序，这或许会导致未知问题", LogBehavior.Toast);
+                Logger.Warn(ex, "可能同时开启了多个程序，这或许会导致未知问题", LogBehavior.Toast);
             } catch (Exception ex) {
-                Logger.Warning(ex, "整理日志文件失败");
+                Logger.Warn(ex, "整理日志文件失败");
             }
             // 写入新日志文件
             try {
@@ -238,7 +221,7 @@ public class FileLogger : BaseLogger, IDisposable {
                     Flush();
                 }
             } catch (Exception ex) {
-                Logger.Warning(ex, "写入日志文件失败", LogBehavior.Toast);
+                Logger.Warn(ex, "写入日志文件失败", LogBehavior.Toast);
                 writerAvailable = false;
             }
         }) { Name = nameof(FileLogger), Priority = ThreadPriority.Lowest, IsBackground = true };
