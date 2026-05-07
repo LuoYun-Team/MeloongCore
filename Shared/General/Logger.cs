@@ -56,7 +56,7 @@ public enum LogBehavior {
 }
 
 public static class Logger {
-    public static BaseLogger Instance { get; set; } = new();
+    internal static BaseLogger Instance { get; set; } = new();
 
     // 转发给实例的方法包装
     public static void Log(string message, LogLevel level = LogLevel.Info, LogBehavior behavior = LogBehavior.None, [CallerFilePath] string filePath = "") 

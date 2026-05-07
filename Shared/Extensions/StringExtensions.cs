@@ -176,6 +176,63 @@ public static class StringExtensions {
 
     #endregion
 
+    #region 正则
+
+    /// <summary>
+    /// 搜索字符串中所有的正则匹配项。
+    /// </summary>
+    public static IEnumerable<string> RegexSearch(this string str, string pattern, RegexOptions options = RegexOptions.None) {
+        try {
+            return Regex.Matches(str, pattern, options).Cast<Match>().Select(m => m.Value);
+        } catch (Exception ex) {
+            Logger.Warning(ex, $"{nameof(RegexSearch)} 失败（{pattern}）");
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// 获取字符串中的第一个正则匹配项，若无匹配或失败则返回 <see langword="null"/>。
+    /// </summary>
+    public static string? RegexSeek(this string str, string pattern, RegexOptions options = RegexOptions.None) {
+        try {
+            var match = Regex.Match(str, pattern, options);
+            return match.Success ? match.Value : null;
+        } catch (Exception ex) {
+            Logger.Warning(ex, $"{nameof(RegexSeek)} 失败（{pattern}）");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 检查字符串是否匹配某正则模式。
+    /// </summary>
+    public static bool RegexCheck(this string str, string pattern, RegexOptions options = RegexOptions.None) {
+        try {
+            return Regex.IsMatch(str, pattern, options);
+        } catch (Exception ex) {
+            Logger.Warning(ex, $"{nameof(RegexCheck)} 失败（{pattern}）");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 进行正则替换。
+    /// 失败时会抛出异常。
+    /// </summary>
+    public static string RegexReplace(this string allContents, string searchRegex, string replaceTo, RegexOptions options = RegexOptions.None) {
+        return Regex.Replace(allContents, searchRegex, replaceTo, options);
+    }
+
+    /// <summary>
+    /// 对每个正则匹配分别进行替换。
+    /// 失败时会抛出异常。
+    /// </summary>
+    public static string RegexReplace(this string allContents, string searchRegex, MatchEvaluator replaceTo, RegexOptions options = RegexOptions.None) {
+        return Regex.Replace(allContents, searchRegex, replaceTo, options);
+    }
+
+    #endregion
+
     /// <summary>
     /// 将第一个字符转换为大写，其余字符转换为小写。
     /// </summary>

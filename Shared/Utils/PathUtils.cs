@@ -88,8 +88,8 @@ public static class PathUtils {
     /// 去除路径末尾的文件名。
     /// 若路径以分隔符结尾，则不作处理。
     /// </summary>
-    public static string? RemoveFileName(string? path) {
-        if (path is null || string.IsNullOrEmpty(path)) return path;
+    public static string RemoveFileName(string? path) {
+        if (path is null || string.IsNullOrEmpty(path)) return "";
         if (path.EndsWithF(Path.DirectorySeparatorChar) || path.EndsWithF(Path.AltDirectorySeparatorChar)) return path;
         return Path.GetDirectoryName(path) ?? "";
     }
