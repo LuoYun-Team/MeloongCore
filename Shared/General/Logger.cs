@@ -131,7 +131,10 @@ public class BaseLogger {
     }
     public virtual void Log(Exception ex, string? message, LogLevel level, LogBehavior behavior, string filePath) {
         if (MinLevel > level) return;
-        if (ex is ThreadInterruptedException) return;
+        if (ex is ThreadInterruptedException) {
+            Thread.CurrentThread.Interrupt();
+            return;
+        }
         try {
             var formattedMessage = (message is null ? "" : $"{message}：") + ex.GetDisplay(true);
             formattedMessage = Format(formattedMessage, level, filePath, ex);
@@ -230,7 +233,7 @@ public class FileLogger : BaseLogger, IDisposable {
                 writer = new StreamWriter(PathUtils.WithLongPath(Path.Combine(logFolder, $"{fileNamePrefix}1{fileNameSuffix}")), append: true) { AutoFlush = true };
                 writerAvailable = true;
                 Logger.Info("日志初始化成功");
-                while (true) {
+                while (writerAvailable) {
                     queuedEvent.WaitOne();
                     Flush();
                 }
@@ -246,5 +249,6 @@ public class FileLogger : BaseLogger, IDisposable {
         writerAvailable = false;
         if (writer is not null) ((IDisposable) writer).Dispose();
         queuedEvent.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

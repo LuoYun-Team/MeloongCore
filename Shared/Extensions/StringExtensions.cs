@@ -189,7 +189,7 @@ public static class StringExtensions {
     /// 过短则用 <paramref name="code"/> 将其左侧填充，过长则截取靠左的指定长度。
     /// </summary>
     public static string EnsureLength(this string? str, char code, int length) {
-        if (str == null) str = "";
+        str ??= "";
         return str.Length > length ? str.Substring(0, length) : str.PadLeft(length, code);
     }
 

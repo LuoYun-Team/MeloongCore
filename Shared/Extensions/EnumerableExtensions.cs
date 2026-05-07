@@ -11,14 +11,18 @@ public static class EnumerableExtensions {
     /// 该方法的效率较低，建议仅在小型列表上使用，或换用 DistinctBy。
     /// </summary>
     public static IEnumerable<T> Distinct<T>(this IList<T> list, Func<T, T, bool> comparer) {
-        for (int i = list.Count - 1; i >= 0; i--) { // 反向遍历以保留最早出现的重复项
-            if (!list.Skip(i + 1).Any(item => comparer(list[i], item))) yield return list[i];
+        var seen = new List<T>();
+        foreach (var item in list) {
+            if (!seen.Any(s => comparer(s, item))) {
+                seen.Add(item);
+                yield return item;
+            }
         }
     }
     /// <summary>
     /// 按对象的指定值去重。
     /// </summary>
-    public static IEnumerable<T> DistinctBy<T, TKey>(this IEnumerable<T> source, Func<T, TKey> selector) {
+    public static IEnumerable<TSource> DistinctBy<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> selector) {
         var seen = new HashSet<TKey>();
         foreach (var element in source) {
             if (seen.Add(selector(element))) yield return element;
@@ -27,7 +31,7 @@ public static class EnumerableExtensions {
     /// <summary>
     /// 按对象的指定值去重。
     /// </summary>
-    public static ParallelQuery<T> DistinctBy<T, TKey>(this ParallelQuery<T> source, Func<T, TKey> selector) {
+    public static ParallelQuery<TSource> DistinctBy<TSource, TKey>(this ParallelQuery<TSource> source, Func<TSource, TKey> selector) {
         var seen = new ConcurrentDictionary<TKey, bool>();
         return source.Where(element => seen.TryAdd(selector(element), true));
     }
@@ -40,16 +44,16 @@ public static class EnumerableExtensions {
     /// 选择所有最大值对应的对象。
     /// 若没有元素则返回空列表。
     /// </summary>
-    public static List<TKey> MaxByAll<TKey, TValue>(this IEnumerable<TKey> source, Func<TKey, TValue> selector) where TValue : IComparable<TValue> {
-        var results = new List<TKey>();
+    public static List<TSource> MaxByAll<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> selector) where TKey : IComparable<TKey> {
+        var results = new List<TSource>();
         using var enumerator = source.GetEnumerator();
         if (!enumerator.MoveNext()) return results;
-        TKey maxItem = enumerator.Current;
-        TValue maxValue = selector(maxItem);
+        TSource maxItem = enumerator.Current;
+        TKey maxValue = selector(maxItem);
         results.Add(maxItem);
         while (enumerator.MoveNext()) {
-            TKey currentItem = enumerator.Current;
-            TValue currentValue = selector(currentItem);
+            TSource currentItem = enumerator.Current;
+            TKey currentValue = selector(currentItem);
             int comparisonResult = currentValue.CompareTo(maxValue);
             if (comparisonResult > 0) {
                 maxValue = currentValue;
@@ -65,16 +69,16 @@ public static class EnumerableExtensions {
     /// 选择所有最小值对应的对象。
     /// 若没有元素则返回空列表。
     /// </summary>
-    public static List<TKey> MinByAll<TKey, TValue>(this IEnumerable<TKey> source, Func<TKey, TValue> selector) where TValue : IComparable<TValue> {
-        var results = new List<TKey>();
+    public static List<TSource> MinByAll<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> selector) where TKey : IComparable<TKey> {
+        var results = new List<TSource>();
         using var enumerator = source.GetEnumerator();
         if (!enumerator.MoveNext()) return results;
-        TKey minItem = enumerator.Current;
-        TValue minValue = selector(minItem);
+        TSource minItem = enumerator.Current;
+        TKey minValue = selector(minItem);
         results.Add(minItem);
         while (enumerator.MoveNext()) {
-            TKey currentItem = enumerator.Current;
-            TValue currentValue = selector(currentItem);
+            TSource currentItem = enumerator.Current;
+            TKey currentValue = selector(currentItem);
             int comparisonResult = currentValue.CompareTo(minValue);
             if (comparisonResult < 0) {
                 minValue = currentValue;
@@ -91,13 +95,13 @@ public static class EnumerableExtensions {
     /// 选择最大值对应的对象。
     /// 若没有元素则返回 null。
     /// </summary>
-    public static TKey? MaxBy<TKey, TValue>(this IEnumerable<TKey> source, Func<TKey, TValue> selector) where TValue : IComparable<TValue> {
+    public static TSource? MaxBy<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> selector) where TKey : IComparable<TKey> {
         using var enumerator = source.GetEnumerator();
         if (!enumerator.MoveNext()) return default;
-        TKey maxItem = enumerator.Current;
-        TValue maxValue = selector(maxItem);
+        TSource maxItem = enumerator.Current;
+        TKey maxValue = selector(maxItem);
         while (enumerator.MoveNext()) {
-            TValue value = selector(enumerator.Current);
+            TKey value = selector(enumerator.Current);
             if (value.CompareTo(maxValue) <= 0) continue;
             maxItem = enumerator.Current;
             maxValue = value;
@@ -108,13 +112,13 @@ public static class EnumerableExtensions {
     /// 选择最小值对应的对象。
     /// 若没有元素则返回 null。
     /// </summary>
-    public static TKey? MinBy<TKey, TValue>(this IEnumerable<TKey> source, Func<TKey, TValue> selector) where TValue : IComparable<TValue> {
+    public static TSource? MinBy<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> selector) where TKey : IComparable<TKey> {
         using var enumerator = source.GetEnumerator();
         if (!enumerator.MoveNext()) { return default; }
-        TKey minItem = enumerator.Current;
-        TValue minValue = selector(minItem);
+        TSource minItem = enumerator.Current;
+        TKey minValue = selector(minItem);
         while (enumerator.MoveNext()) {
-            TValue value = selector(enumerator.Current);
+            TKey value = selector(enumerator.Current);
             if (value.CompareTo(minValue) >= 0) { continue; }
             minItem = enumerator.Current;
             minValue = value;
@@ -183,7 +187,7 @@ public static class EnumerableExtensions {
     /// <summary>
     /// 尝试从字典中获取某项，如果该项不存在，则返回默认值。
     /// </summary>
-    public static TValue GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> dict, TKey key, TValue defaultValue = default!) 
+    public static TValue? GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> dict, TKey key, TValue defaultValue = default) 
         => dict.TryGetValue(key, out var result) ? result : defaultValue;
 
     /// <summary>

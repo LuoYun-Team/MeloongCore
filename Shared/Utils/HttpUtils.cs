@@ -7,9 +7,9 @@ public class HttpRequestCodeException(string message, HttpStatusCode statusCode,
     /// <summary>
     /// HTTP 请求的状态码。
     /// </summary>
-    public HttpStatusCode StatusCode { get; set; } = statusCode;
+    public HttpStatusCode StatusCode { get; } = statusCode;
     /// <summary>
     /// 远程服务器给予的回复。
     /// </summary>
-    public string? Response { get; set; } = response;
+    public string? Response { get; } = response;
 }

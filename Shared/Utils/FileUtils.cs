@@ -35,7 +35,7 @@ public static class FileUtils {
     /// 如果文件或文件夹不存在，则会自动创建。若已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, Stream stream) {
-        using FileStream fileStream = CreateAsStream(PathUtils.WithLongPath(filePath));
+        using FileStream fileStream = FileUtils.CreateAsStream(filePath);
         if (stream.CanSeek && stream.Position != 0) stream.Seek(0, SeekOrigin.Begin);
         Logger.Trace(() => $"写入文件：{filePath}（{stream.GetType().Name}{(stream.CanSeek ? $" {stream.Length} 字节" : "")}）");
         stream.CopyTo(fileStream);
@@ -85,7 +85,9 @@ public static class FileUtils {
             Run(target);
         } else {
             System.Runtime.ExceptionServices.ExceptionDispatchInfo? internalEx = null; // 捕获内部异常
-            var thread = new Thread(() => { try { Run(target); } catch (Exception ex) { internalEx = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex); } });
+            var thread = new Thread(
+                () => { try { Run(target); } catch (Exception ex) { internalEx = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex); } }) 
+                { IsBackground = true, Name = nameof(DeleteToRecycleBin) };
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
             thread.Join();

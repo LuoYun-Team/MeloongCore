@@ -17,7 +17,7 @@ public abstract class TestWithFolder {
             $"{GetType().Name}-{Guid.NewGuid()}",
             "文件夹 Dir_!@#$%^&()_+={}[];',_",
             new string('X', 200), new string('X', 200)) + @"\";
-        Directory.CreateDirectory(@"\\?\" + tempFolder);
+        DirectoryUtils.Create(tempFolder);
     }
 
     /// <summary>
@@ -26,7 +26,7 @@ public abstract class TestWithFolder {
     public string GetTestFile(string fileName) {
         var sourceFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestFiles", GetType().Name.Replace("Test", ""), fileName);
         var distPath = Path.Combine(tempFolder, Path.GetFileName(sourceFilePath));
-        File.Copy(sourceFilePath, @"\\?\" + distPath);
+        FileUtils.Copy(sourceFilePath, distPath);
         return distPath;
     }
 
