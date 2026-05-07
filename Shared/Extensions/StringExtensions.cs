@@ -233,6 +233,45 @@ public static class StringExtensions {
 
     #endregion
 
+    #region 读取为字符串
+
+    /// <summary>
+    /// 读取 <see cref="Stream"/> 中的内容，并解码为字符串。
+    /// 会将流的位置主动重置到开头。
+    /// 若未指定 <paramref name="encoding"/>，会自动判断编码。
+    /// </summary>
+    public static string ReadString(this Stream stream, Encoding? encoding = null) {
+        using var memoryStream = new MemoryStream();
+        if (stream.CanSeek && stream.Position != 0) stream.Seek(0, SeekOrigin.Begin);
+        stream.CopyTo(memoryStream);
+        return memoryStream.ToArray().GetString(encoding);
+    }
+
+    /// <summary>
+    /// 将 <paramref name="bytes"/> 解码为字符串。
+    /// 若未指定 <paramref name="encoding"/>，会自动判断编码。
+    /// </summary>
+    public static string GetString(this byte[] bytes, Encoding? encoding = null) {
+        if (encoding is not null) return encoding.GetString(bytes);
+        int length = bytes.Length;
+        // 根据 BOM 判断编码
+        if (length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF) {
+            return Encoding.UTF8.GetString(bytes, 3, length - 3); // 带 BOM 的 UTF8
+        } else if (length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF) {
+            return Encoding.BigEndianUnicode.GetString(bytes, 2, length - 2);
+        } else if (length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE) {
+            return Encoding.Unicode.GetString(bytes, 2, length - 2);
+        }
+        // 无 BOM 文件：GB18030（ANSI）或 UTF8
+        try {
+            return new UTF8Encoding(false, true).GetString(bytes); // 不带 BOM 的 UTF8
+        } catch (DecoderFallbackException) {
+            return Encoding.GetEncoding("GB18030").GetString(bytes);
+        }
+    }
+
+    #endregion
+
     /// <summary>
     /// 将第一个字符转换为大写，其余字符转换为小写。
     /// </summary>
