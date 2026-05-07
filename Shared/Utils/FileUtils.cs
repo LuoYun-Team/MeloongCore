@@ -20,14 +20,32 @@ public static class FileUtils {
     /// <summary>
     /// 读取文件中的所有内容。
     /// </summary>
-    public static string ReadAsString(string filePath, Encoding? encoding = null)
+    public static string ReadAsString(string filePath, Encoding? encoding = null) 
         => FileUtils.ReadAsBytes(filePath).GetString(encoding);
+    /// <summary>
+    /// 读取文件中的所有内容。
+    /// 若文件不存在或读取失败，返回 <see langword="null"/>，而不是抛出异常。
+    /// </summary>
+    public static string? TryReadAsString(string filePath, Encoding? encoding = null) {
+        try {
+            if (!FileUtils.Exists(filePath)) return null;
+            return FileUtils.ReadAsBytes(filePath).GetString(encoding);
+        } catch {
+            return null;
+        }
+    }
 
     /// <summary>
     /// 读取文件中的所有内容，并按行分割。
     /// </summary>
     public static string[] ReadAsLines(string filePath, bool skipEmptyLines = false, Encoding? encoding = null)
         => FileUtils.ReadAsString(filePath, encoding).SplitLines(skipEmptyLines);
+    /// <summary>
+    /// 读取文件中的所有内容，并按行分割。
+    /// 若文件不存在或读取失败，返回空数组，而不是抛出异常。
+    /// </summary>
+    public static string[] TryReadAsLines(string filePath, bool skipEmptyLines = false, Encoding? encoding = null)
+        => FileUtils.TryReadAsString(filePath, encoding)?.SplitLines(skipEmptyLines) ?? [];
 
     #endregion
 
