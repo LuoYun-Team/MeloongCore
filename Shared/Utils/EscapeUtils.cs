@@ -4,7 +4,7 @@ namespace MeloongCore;
 public static class EscapeUtils {
 
     /// <summary>
-    /// XML 转义。
+    /// WPF XML 转义。
     /// </summary>
     public static string? XmlEscape(string? str) {
         if (str is null) return null;
@@ -34,7 +34,7 @@ public static class EscapeUtils {
     /// 等同于 <see cref="Regex.Escape"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? RegexEscape(string? value) 
+    public static string? RegexEscape(string value) 
         => Regex.Escape(value);
 
     /// <summary>
@@ -42,7 +42,7 @@ public static class EscapeUtils {
     /// 等同于 <see cref="Regex.Unescape"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? RegexUnescape(string? value) 
+    public static string? RegexUnescape(string value) 
         => Regex.Unescape(value);
 
     /// <summary>
@@ -50,7 +50,7 @@ public static class EscapeUtils {
     /// 等同于 <see cref="Uri.EscapeDataString"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? UrlEscape(string? value) 
+    public static string? UrlEscape(string value) 
         => Uri.EscapeDataString(value);
 
     /// <summary>
@@ -58,7 +58,7 @@ public static class EscapeUtils {
     /// 等同于 <see cref="Uri.UnescapeDataString"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? UrlUnescape(string? value) 
+    public static string? UrlUnescape(string value) 
         => Uri.UnescapeDataString(value);
 
     /// <summary>
@@ -66,7 +66,7 @@ public static class EscapeUtils {
     /// 等同于 <see cref="WebUtility.UrlEncode"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? FormUrlEscape(string? value) 
+    public static string? FormUrlEscape(string value) 
         => WebUtility.UrlEncode(value);
 
     /// <summary>
@@ -74,7 +74,7 @@ public static class EscapeUtils {
     /// 等同于 <see cref="WebUtility.UrlDecode"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? FormUrlUnescape(string? value) 
+    public static string? FormUrlUnescape(string value) 
         => WebUtility.UrlDecode(value);
 
     /// <summary>
@@ -82,7 +82,7 @@ public static class EscapeUtils {
     /// 等同于 <see cref="WebUtility.HtmlEncode"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? HtmlEscape(string? value) 
+    public static string? HtmlEscape(string value) 
         => WebUtility.HtmlEncode(value);
 
     /// <summary>
@@ -90,7 +90,7 @@ public static class EscapeUtils {
     /// 等同于 <see cref="WebUtility.HtmlDecode"/>。
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string? HtmlUnescape(string? value) 
+    public static string? HtmlUnescape(string value) 
         => WebUtility.HtmlDecode(value);
 
 }

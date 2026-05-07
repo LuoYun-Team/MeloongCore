@@ -37,7 +37,7 @@ public static class FileUtils {
     public static void Write(string filePath, Stream stream) {
         using FileStream fileStream = CreateAsStream(PathUtils.WithLongPath(filePath));
         if (stream.CanSeek && stream.Position != 0) stream.Seek(0, SeekOrigin.Begin);
-        Logger.Trace(() => $"写入文件：{filePath}（{stream.GetType().Name} {stream.Length} 字节）");
+        Logger.Trace(() => $"写入文件：{filePath}（{stream.GetType().Name}{(stream.CanSeek ? $" {stream.Length} 字节" : "")}）");
         stream.CopyTo(fileStream);
     }
 
@@ -49,7 +49,7 @@ public static class FileUtils {
     /// 删除文件。
     /// </summary>
     public static void Delete(string filePath, bool toRecycleBin = false) {
-        if (!Exists(filePath)) return;
+        if (!FileUtils.Exists(filePath)) return;
         Logger.Trace($"{(toRecycleBin ? "将文件删除到回收站" : "删除文件")}：{filePath}");
         if (toRecycleBin) {
             DeleteToRecycleBin(filePath);
@@ -284,6 +284,7 @@ public static class FileUtils {
     public static void Move(string sourceFilePath, string destFilePath) {
         if (sourceFilePath == destFilePath) return; // 如果移动同一个文件则跳过
         DirectoryUtils.Create(destFilePath, isFilePath: true);
+        FileUtils.Delete(destFilePath);
         Logger.Trace($"剪切文件：{sourceFilePath} → {destFilePath}");
         File.Move(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath));
     }

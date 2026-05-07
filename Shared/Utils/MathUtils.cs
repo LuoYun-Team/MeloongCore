@@ -91,10 +91,12 @@ public static class MathUtils {
         if (t > 0.9999999) return 1;
         double a = t;
         double b;
+        int maxIterations = 1000;
         do {
             b = 3 * a * ((0.33333333 + x1 - x2) * a * a + (x2 - 2 * x1) * a + x1);
             a += (t - b) * 0.5;
-        } while (!(Math.Abs(b - t) < accuracy)); // 精度
+            maxIterations--;
+        } while (!(Math.Abs(b - t) < accuracy) && maxIterations > 0);
         return 3 * a * ((0.33333333 + y1 - y2) * a * a + (y2 - 2 * y1) * a + y1);
     }
 

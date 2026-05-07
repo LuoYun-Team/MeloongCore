@@ -59,7 +59,7 @@ public static class DirectoryUtils {
     /// </summary>
     public static void Move(string sourceDirName, string destDirName) {
         if (!Exists(sourceDirName)) return;
-        Create(destDirName);
+        DirectoryUtils.Delete(destDirName); // Move 要求不存在对应文件夹
         Logger.Trace($"剪切文件夹：{sourceDirName} → {destDirName}");
         Directory.Move(PathUtils.WithLongPath(sourceDirName), PathUtils.WithLongPath(destDirName));
     }
@@ -73,7 +73,7 @@ public static class DirectoryUtils {
         if (toRecycleBin) {
             FileUtils.DeleteToRecycleBin(dirPath);
         } else {
-            Directory.Delete(PathUtils.WithLongPath(dirPath));
+            Directory.Delete(PathUtils.WithLongPath(dirPath), recursive:true);
         }
     }
 }

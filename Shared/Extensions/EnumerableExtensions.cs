@@ -11,7 +11,7 @@ public static class EnumerableExtensions {
     /// 该方法的效率较低，建议仅在小型列表上使用，或换用 DistinctBy。
     /// </summary>
     public static IEnumerable<T> Distinct<T>(this IList<T> list, Func<T, T, bool> comparer) {
-        for (int i = 0; i < list.Count; i++) {
+        for (int i = list.Count - 1; i >= 0; i--) { // 反向遍历以保留最早出现的重复项
             if (!list.Skip(i + 1).Any(item => comparer(list[i], item))) yield return list[i];
         }
     }
@@ -108,13 +108,13 @@ public static class EnumerableExtensions {
     /// 选择最小值对应的对象。
     /// 若没有元素则返回 null。
     /// </summary>
-    public static TKey? MinBy<TKey, TValue>(this IEnumerable<TKey> List, Func<TKey, TValue> Selector) where TValue : IComparable<TValue> {
-        using var enumerator = List.GetEnumerator();
+    public static TKey? MinBy<TKey, TValue>(this IEnumerable<TKey> source, Func<TKey, TValue> selector) where TValue : IComparable<TValue> {
+        using var enumerator = source.GetEnumerator();
         if (!enumerator.MoveNext()) { return default; }
         TKey minItem = enumerator.Current;
-        TValue minValue = Selector(minItem);
+        TValue minValue = selector(minItem);
         while (enumerator.MoveNext()) {
-            TValue value = Selector(enumerator.Current);
+            TValue value = selector(enumerator.Current);
             if (value.CompareTo(minValue) >= 0) { continue; }
             minItem = enumerator.Current;
             minValue = value;
@@ -231,8 +231,10 @@ public static class EnumerableExtensions {
     /// 对集合的每个元素执行指定操作。
     /// </summary>
     public static IEnumerable<T> ForAll<T>(this IEnumerable<T> source, Action<T> action) {
-        foreach (T item in source) action(item);
-        return source;
+        foreach (T item in source) {
+            action(item);
+            yield return item;
+        }
     }
 
 }

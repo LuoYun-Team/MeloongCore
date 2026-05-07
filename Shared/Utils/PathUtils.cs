@@ -74,8 +74,11 @@ public static class PathUtils {
     /// <summary>
     /// 去除路径开头的 <c>\\?\</c>。
     /// </summary>
-    public static string WithoutLongPath(string path) 
-        => path.AfterLast(@"\\?\");
+    public static string WithoutLongPath(string path) {
+        if (path.StartsWithF(@"\\?\UNC\")) return @"\\" + path.AfterLast(@"\\?\UNC\");
+        if (path.StartsWithF(@"\\?\")) return path.AfterLast(@"\\?\");
+        return path;
+    }
 
     #endregion
 
