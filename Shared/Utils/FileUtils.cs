@@ -1,8 +1,23 @@
-﻿using System.IO;
-using System.IO.Compression;
+﻿using System.IO.Compression;
 
 namespace MeloongCore;
 public static class FileUtils {
+
+    #region 读取
+
+    /// <summary>
+    /// 读取文件中的所有字节。
+    /// </summary>
+    public static byte[] ReadAsBytes(string filePath)
+        => File.ReadAllBytes(PathUtils.WithLongPath(filePath));
+
+    /// <summary>
+    /// 打开该文件的只读 <see cref="FileStream"/>。
+    /// </summary>
+    public static FileStream ReadAsStream(string filePath)
+        => new(PathUtils.WithLongPath(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+
+    #endregion
 
     #region 写入
 
@@ -40,6 +55,38 @@ public static class FileUtils {
         if (stream.CanSeek && stream.Position != 0) stream.Seek(0, SeekOrigin.Begin);
         Logger.Trace($"写入文件：{filePath}（{stream.GetType().Name}{(stream.CanSeek ? $" {stream.Length} 字节" : "")}）");
         stream.CopyTo(fileStream);
+    }
+
+    #endregion
+
+    #region 复制 / 剪切
+
+    /// <summary>
+    /// 复制文件。
+    /// 会创建对应文件夹、覆盖已有的文件。
+    /// 若原文件不存在，则不执行。
+    /// </summary>
+    public static void Copy(string sourceFilePath, string destFilePath) {
+        if (sourceFilePath == destFilePath) return; // 如果复制同一个文件则跳过
+        if (!FileUtils.Exists(sourceFilePath)) {
+            Logger.Info($"尝试复制文件，但原文件不存在，已跳过复制：{sourceFilePath} → {destFilePath}");
+            return;
+        }
+        DirectoryUtils.Create(destFilePath, isFilePath: true);
+        Logger.Trace($"复制文件：{sourceFilePath} → {destFilePath}");
+        File.Copy(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath), true);
+    }
+
+    /// <summary>
+    /// 剪切文件。
+    /// 会创建对应文件夹、覆盖已有的文件。
+    /// </summary>
+    public static void Move(string sourceFilePath, string destFilePath) {
+        if (sourceFilePath == destFilePath) return; // 如果移动同一个文件则跳过
+        DirectoryUtils.Create(destFilePath, isFilePath: true);
+        FileUtils.Delete(destFilePath);
+        Logger.Trace($"剪切文件：{sourceFilePath} → {destFilePath}");
+        File.Move(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath));
     }
 
     #endregion
@@ -128,26 +175,7 @@ public static class FileUtils {
 
     #endregion
 
-    #region FileStream
-
-    /// <summary>
-    /// 打开该文件的只读 <see cref="FileStream"/>。
-    /// </summary>
-    public static FileStream ReadAsStream(string filePath) 
-        => new(PathUtils.WithLongPath(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-
-    /// <summary>
-    /// 在指定路径创建文件，并打开 <see cref="FileStream"/>。
-    /// </summary>
-    public static FileStream CreateAsStream(string filePath) {
-        DirectoryUtils.Create(filePath, isFilePath: true);
-        Logger.Trace($"创建文件流：{filePath}");
-        return new(PathUtils.WithLongPath(filePath), FileMode.Create);
-    }
-
-    #endregion
-
-    #region 压缩包
+    #region 压缩 / 解压
 
     /// <summary>
     /// 以只读模式打开压缩文件。
@@ -264,37 +292,18 @@ public static class FileUtils {
         => File.Exists(PathUtils.WithLongPath(filePath));
 
     /// <summary>
-    /// 创建 <see cref="FileInfo"/> 对象。
+    /// 在指定路径创建文件，并打开 <see cref="FileStream"/>。
+    /// </summary>
+    public static FileStream CreateAsStream(string filePath) {
+        DirectoryUtils.Create(filePath, isFilePath: true);
+        Logger.Trace($"创建文件流：{filePath}");
+        return new(PathUtils.WithLongPath(filePath), FileMode.Create);
+    }
+
+    /// <summary>
+    /// 获取 <see cref="FileInfo"/> 对象。
     /// </summary>
     public static FileInfo GetInfo(string path) 
         => new(PathUtils.WithLongPath(path));
-
-    /// <summary>
-    /// 复制文件。
-    /// 会创建对应文件夹、覆盖已有的文件。
-    /// 若原文件不存在，则不执行。
-    /// </summary>
-    public static void Copy(string sourceFilePath, string destFilePath) {
-        if (sourceFilePath == destFilePath) return; // 如果复制同一个文件则跳过
-        if (!FileUtils.Exists(sourceFilePath)) {
-            Logger.Info($"尝试复制文件，但原文件不存在，已跳过复制：{sourceFilePath} → {destFilePath}");
-            return;
-        }
-        DirectoryUtils.Create(destFilePath, isFilePath: true);
-        Logger.Trace($"复制文件：{sourceFilePath} → {destFilePath}");
-        File.Copy(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath), true);
-    }
-
-    /// <summary>
-    /// 剪切文件。
-    /// 会创建对应文件夹、覆盖已有的文件。
-    /// </summary>
-    public static void Move(string sourceFilePath, string destFilePath) {
-        if (sourceFilePath == destFilePath) return; // 如果移动同一个文件则跳过
-        DirectoryUtils.Create(destFilePath, isFilePath: true);
-        FileUtils.Delete(destFilePath);
-        Logger.Trace($"剪切文件：{sourceFilePath} → {destFilePath}");
-        File.Move(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath));
-    }
 
 }

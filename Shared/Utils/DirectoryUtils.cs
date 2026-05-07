@@ -20,13 +20,14 @@ public static class DirectoryUtils {
         => Directory.Exists(PathUtils.WithLongPath(path));
 
     /// <summary>
-    /// 创建 <see cref="DirectoryInfo"/> 对象。
+    /// 获取 <see cref="DirectoryInfo"/> 对象。
     /// </summary>
     public static DirectoryInfo GetInfo(string path) 
         => new(PathUtils.WithLongPath(path));
 
     /// <summary>
     /// 返回指定路径下的所有文件，不以 \\?\ 开头。
+    /// 如果文件夹不存在，返回空列表。
     /// </summary>
     public static IEnumerable<string> GetFiles(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!DirectoryUtils.Exists(path)) return [];
@@ -37,6 +38,7 @@ public static class DirectoryUtils {
 
     /// <summary>
     /// 返回指定路径下的所有文件夹，不以分隔符结尾，不以 \\?\ 开头。
+    /// 如果文件夹不存在，返回空列表。
     /// </summary>
     public static IEnumerable<string> GetDirectories(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!DirectoryUtils.Exists(path)) return [];
@@ -47,7 +49,7 @@ public static class DirectoryUtils {
 
     /// <summary>
     /// 该文件夹是否为空。
-    /// 如果文件夹不存在，也返回 true。
+    /// 如果文件夹不存在，返回 true。
     /// </summary>
     public static bool IsEmpty(string path) {
         if (!DirectoryUtils.Exists(path)) return true;
