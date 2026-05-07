@@ -94,38 +94,38 @@ public static class StringExtensions {
     }
 
     /// <summary>
-    /// 获取在子字符串第一次出现之前的部分，例如对 2024/11/08 拆切 / 会得到 2024。
-    /// 如果未找到子字符串则不裁切。
+    /// 获取在子字符串第一次出现之前的部分，如果未找到子字符串则不裁切。
+    /// <code>"2024/11/08".BeforeFirst("/") => "2024"</code>
     /// </summary>
-    public static string BeforeFirst(this string str, [AllowNull] string text, bool ignoreCase = false) {
+    public static string BeforeFirst(this string str, string text, bool ignoreCase = false) {
         int pos = string.IsNullOrEmpty(text) ? -1 : str.IndexOfF(text!, ignoreCase);
         if (pos < 0) return str;
         return str.Substring(0, pos);
     }
     /// <summary>
-    /// 获取在子字符串最后一次出现之前的部分，例如对 2024/11/08 拆切 / 会得到 2024/11。
-    /// 如果未找到子字符串则不裁切。
+    /// 获取在子字符串最后一次出现之前的部分，如果未找到子字符串则不裁切。
+    /// <code>"2024/11/08".BeforeLast("/") => "2024/11"</code>
     /// </summary>
-    public static string BeforeLast(this string str, [AllowNull] string text, bool ignoreCase = false) {
+    public static string BeforeLast(this string str, string text, bool ignoreCase = false) {
         int pos = string.IsNullOrEmpty(text) ? -1 : str.LastIndexOfF(text!, ignoreCase);
         if (pos < 0) return str;
         return str.Substring(0, pos);
     }
 
     /// <summary>
-    /// 获取在子字符串第一次出现之后的部分，例如对 2024/11/08 拆切 / 会得到 11/08。
-    /// 如果未找到子字符串则不裁切。
+    /// 获取在子字符串第一次出现之后的部分，如果未找到子字符串则不裁切。
+    /// <code>"2024/11/08".AfterFirst("/") => "11/08"</code>
     /// </summary>
-    public static string AfterFirst(this string str, [AllowNull] string text, bool ignoreCase = false) {
+    public static string AfterFirst(this string str, string text, bool ignoreCase = false) {
         int pos = string.IsNullOrEmpty(text) ? -1 : str.IndexOfF(text!, ignoreCase);
         if (pos < 0) return str;
         return str.Substring(pos + text!.Length);
     }
     /// <summary>
-    /// 获取在子字符串最后一次出现之后的部分，例如对 2024/11/08 拆切 / 会得到 08。
-    /// 如果未找到子字符串则不裁切。
+    /// 获取在子字符串最后一次出现之后的部分，如果未找到子字符串则不裁切。
+    /// <code>"2024/11/08".AfterLast("/") => "08"</code>
     /// </summary>
-    public static string AfterLast(this string str, [AllowNull] string text, bool ignoreCase = false) {
+    public static string AfterLast(this string str, string text, bool ignoreCase = false) {
         int pos = string.IsNullOrEmpty(text) ? -1 : str.LastIndexOfF(text!, ignoreCase);
         if (pos < 0) return str;
         return str.Substring(pos + text!.Length);

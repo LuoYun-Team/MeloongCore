@@ -7,7 +7,7 @@ public static class PathUtils {
     /// 确保路径的结尾包含文件夹分隔符。
     /// </summary>
     public static string WithSeparator(string folder) 
-        => folder.EndsWithF(Path.DirectorySeparatorChar) ? folder : folder + Path.DirectorySeparatorChar;
+        => folder.EndsWithF(Path.DirectorySeparatorChar) || folder.EndsWithF(Path.AltDirectorySeparatorChar) ? folder : folder + Path.DirectorySeparatorChar;
 
     /// <summary>
     /// 确保路径的结尾不包含文件夹分隔符。
@@ -34,7 +34,7 @@ public static class PathUtils {
         if (fullName.EndsWithF(".jar", true)) keepFileName = true; // jar 文件的文件名需要保留原样，否则会导致 Forge 1.20.1 无法通过文件名识别模块名
         if (keepFileName && FileUtils.Exists(fullName)) {
             pathToKeep = Path.GetFileName(fullName);
-            pathToShorten = Path.GetDirectoryName(fullName);
+            pathToShorten = PathUtils.RemoveFileName(fullName);
         }
 
         // 逐级向上寻找已存在的文件夹，将不存在的部分挪到 suffix，不再缩短
@@ -78,6 +78,20 @@ public static class PathUtils {
         if (path.StartsWithF(@"\\?\UNC\")) return @"\\" + path.AfterLast(@"\\?\UNC\");
         if (path.StartsWithF(@"\\?\")) return path.AfterLast(@"\\?\");
         return path;
+    }
+
+    #endregion
+
+    #region 路径处理
+
+    /// <summary>
+    /// 去除路径末尾的文件名。
+    /// 若路径以分隔符结尾，则不作处理。
+    /// </summary>
+    public static string? RemoveFileName(string? path) {
+        if (path is null || string.IsNullOrEmpty(path)) return path;
+        if (path.EndsWithF(Path.DirectorySeparatorChar) || path.EndsWithF(Path.AltDirectorySeparatorChar)) return path;
+        return Path.GetDirectoryName(path) ?? "";
     }
 
     #endregion

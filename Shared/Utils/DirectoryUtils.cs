@@ -6,7 +6,7 @@ public static class DirectoryUtils {
     /// 文件夹已存在时不会抛出异常。
     /// </summary>
     public static void Create(string path, bool isFilePath = false) {
-        if (isFilePath) path = Path.GetDirectoryName(path);
+        if (isFilePath) path = PathUtils.RemoveFileName(path);
         if (Exists(path)) return;
         Logger.Trace($"新建文件夹：{path}");
         path = PathUtils.WithLongPath(path);
