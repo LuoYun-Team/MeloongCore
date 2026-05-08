@@ -52,28 +52,17 @@ public static class FileUtils {
     #region 创建 / 写入
 
     /// <summary>
-    /// 创建文件，并打开 <see cref="FileStream"/>。
-    /// </summary>
-    public static FileStream CreateAsStream(string filePath) {
-        DirectoryUtils.Create(filePath, isFilePath: true);
-        Logger.Trace($"创建文件流：{filePath}");
-        return new(PathUtils.WithLongPath(filePath), FileMode.Create);
-    }
-
-    /// <summary>
     /// 创建文件，并将 <paramref name="text" /> 写入文件。
     /// 若文件已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, string text, Encoding? encoding = null) 
         => FileUtils.Write(filePath, (encoding ?? new UTF8Encoding()).GetBytes(text));
-
     /// <summary>
     /// 创建文件，并将 <paramref name="content" /> 写入文件。
     /// 若文件已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, IEnumerable<byte> content) 
         => FileUtils.Write(filePath, [.. content]);
-
     /// <summary>
     /// 创建文件，并将 <paramref name="content" /> 写入文件。
     /// 若文件已存在，则会覆盖原文件。
@@ -81,7 +70,8 @@ public static class FileUtils {
     public static void Write(string filePath, byte[] content) {
         DirectoryUtils.Create(filePath, isFilePath: true);
         Logger.Trace($"写入文件：{filePath}（{content.Length} 字节）");
-        File.WriteAllBytes(PathUtils.WithLongPath(filePath), content);
+        ResilientUtils.RetryOn<IOException>(() 
+            => File.WriteAllBytes(PathUtils.WithLongPath(filePath), content));
     }
 
     /// <summary>
@@ -94,6 +84,16 @@ public static class FileUtils {
         if (stream.CanSeek && stream.Position != 0) stream.Seek(0, SeekOrigin.Begin);
         Logger.Trace($"写入文件：{filePath}（{stream.GetType().Name}{(stream.CanSeek ? $" {stream.Length} 字节" : "")}）");
         stream.CopyTo(fileStream);
+    }
+    /// <summary>
+    /// 创建文件，并打开 <see cref="FileStream"/>。
+    /// 若文件已存在，则会覆盖原文件。
+    /// </summary>
+    public static FileStream CreateAsStream(string filePath) {
+        DirectoryUtils.Create(filePath, isFilePath: true);
+        Logger.Trace($"创建文件流：{filePath}");
+        return ResilientUtils.RetryOn<IOException, FileStream>(()
+            => new FileStream(PathUtils.WithLongPath(filePath), FileMode.Create));
     }
 
     #endregion
@@ -113,7 +113,8 @@ public static class FileUtils {
         }
         DirectoryUtils.Create(destFilePath, isFilePath: true);
         Logger.Trace($"复制文件：{sourceFilePath} → {destFilePath}");
-        File.Copy(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath), true);
+        ResilientUtils.RetryOn<IOException>(()
+            => File.Copy(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath), true));
     }
 
     /// <summary>
@@ -125,7 +126,8 @@ public static class FileUtils {
         DirectoryUtils.Create(destFilePath, isFilePath: true);
         FileUtils.Delete(destFilePath);
         Logger.Trace($"剪切文件：{sourceFilePath} → {destFilePath}");
-        File.Move(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath));
+        ResilientUtils.RetryOn<IOException>(()
+            => File.Move(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath)));
     }
 
     #endregion
@@ -141,7 +143,8 @@ public static class FileUtils {
         if (toRecycleBin) {
             DeleteToRecycleBin(filePath);
         } else {
-            File.Delete(PathUtils.WithLongPath(filePath));
+            ResilientUtils.RetryOn<IOException>(()
+                => File.Delete(PathUtils.WithLongPath(filePath)));
         }
     }
 
@@ -150,12 +153,12 @@ public static class FileUtils {
     /// </summary>
     internal static void DeleteToRecycleBin(string target) {
         // 实际的删除方法
-        static void Run(string filePath) {
+        void Run() {
             IShellItem? item = null;
             IFileOperation? op = null;
             try {
                 var iid = typeof(IShellItem).GUID;
-                Marshal.ThrowExceptionForHR(SHCreateItemFromParsingName(PathUtils.WithoutLongPath(filePath), IntPtr.Zero, ref iid, out item));
+                Marshal.ThrowExceptionForHR(SHCreateItemFromParsingName(PathUtils.WithoutLongPath(target), IntPtr.Zero, ref iid, out item));
                 op = (IFileOperation) new FileOperation();
                 op.SetOperationFlags(0x0040 | 0x0010 | 0x0004); // FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT
                 op.DeleteItem(item, IntPtr.Zero);
@@ -169,12 +172,16 @@ public static class FileUtils {
         }
         // 在 STA 线程中执行删除方法
         if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA) {
-            Run(target);
+            ResilientUtils.RetryOn<IOException>(Run);
         } else {
             System.Runtime.ExceptionServices.ExceptionDispatchInfo? internalEx = null; // 捕获内部异常
-            var thread = new Thread(
-                () => { try { Run(target); } catch (Exception ex) { internalEx = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex); } }) 
-                { IsBackground = true, Name = nameof(DeleteToRecycleBin) };
+            var thread = new Thread(() => { 
+                try { 
+                    ResilientUtils.RetryOn<IOException>(Run); 
+                } catch (Exception ex) { 
+                    internalEx = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex); 
+                } 
+            }) { IsBackground = true, Name = nameof(DeleteToRecycleBin) };
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
             thread.Join();
@@ -258,7 +265,6 @@ public static class FileUtils {
             using var fileStream = FileUtils.ReadAsStream(compressionFile);
             using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
             FileUtils.Write(outFilePath, gzipStream);
-            progressHandler?.Invoke(1);
             return;
         }
         // 解压 zip
@@ -291,7 +297,8 @@ public static class FileUtils {
         DirectoryUtils.Create(outputFullPath, isFilePath: true);
         FileUtils.Delete(outputFullPath);
         Logger.Trace($"将文件夹中的内容压缩为 zip 文件：{sourceDirectory} → {outputFullPath}");
-        ZipFile.CreateFromDirectory(sourceDirectory, outputFullPath);
+        ResilientUtils.RetryOn<IOException>(()
+            => ZipFile.CreateFromDirectory(sourceDirectory, outputFullPath));
     }
 
     /// <summary>
@@ -317,7 +324,8 @@ public static class FileUtils {
         outputFullPath = PathUtils.WithLongPath(outputFullPath);
         DirectoryUtils.Create(outputFullPath, isFilePath: true);
         FileUtils.Delete(outputFullPath);
-        using var archive = ZipFile.Open(outputFullPath, ZipArchiveMode.Create);
+        using var archive = ResilientUtils.RetryOn<IOException, ZipArchive>(()
+            => ZipFile.Open(outputFullPath, ZipArchiveMode.Create));
         Logger.Trace($"创建 zip 文件：{sources.Count} 个文件 → {outputFullPath}\n{sources.Select(p => $"- {p.Value} → {p.Key}").Join('\n')}");
         foreach (var pair in sources) archive.CreateEntryFromFile(PathUtils.WithLongPath(pair.Value), pair.Key.Replace('\\', '/'), CompressionLevel.Optimal);
     }

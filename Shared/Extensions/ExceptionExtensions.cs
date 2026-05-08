@@ -107,7 +107,7 @@ public static class ExceptionExtensions {
                     WebExceptionStatus.ProxyNameResolutionFailure) return true;
             } else if (currentEx is SocketException socketEx) {
                 if (socketEx.SocketErrorCode is SocketError.NetworkDown or SocketError.NetworkUnreachable or SocketError.NetworkReset or SocketError.ConnectionAborted or 
-                    SocketError.ConnectionReset or SocketError.TimedOut or SocketError.ConnectionRefused or SocketError.HostDown or SocketError.HostUnreachable or 
+                    SocketError.ConnectionReset or SocketError.TimedOut or SocketError.ConnectionRefused or SocketError.HostUnreachable or 
                     SocketError.HostNotFound or SocketError.TryAgain or SocketError.NoData) return true;
             }
         }

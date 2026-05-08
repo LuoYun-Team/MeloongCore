@@ -107,7 +107,7 @@ public static class DirectoryUtils {
                 try {
                     foreach (string filePath in DirectoryUtils.GetFiles(folder, true)) FileUtils.Delete(filePath); // 删除文件
                     foreach (string str in DirectoryUtils.GetDirectories(folder, true)) DeleteInternal(str); // 递归删除子文件夹
-                    Directory.Delete(folder, true); // 删除空文件夹
+                    ResilientUtils.RetryOn<IOException>(() => Directory.Delete(folder, true)); // 最终删除文件夹
                 } catch (DirectoryNotFoundException ex) { // #4549，也可能已被其他线程删除
                     if (DirectoryUtils.Exists(folder)) {
                         Logger.Warn(ex, $"该文件夹可能为孤立的符号链接，尝试直接删除（{folder}）");
