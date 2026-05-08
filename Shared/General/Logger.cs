@@ -221,7 +221,7 @@ public class BaseLogger {
             .Join("\r\n");
     }
     public static string GetLogPrefix(LogLevel level, string filePath)
-        => $"{DateTime.Now:HH':'mm':'ss'.'fff} {level.ToString().First()} {(Thread.CurrentThread.Name is null ? "" : $"<{Thread.CurrentThread.Name}> ")}[{Path.GetFileName(filePath).BeforeFirst(".")}] ";
+        => $"{DateTime.Now:HH':'mm':'ss'.'fff} {level.ToString().First()} {(Thread.CurrentThread.Name is null ? "" : $"<{Thread.CurrentThread.Name}> ")}[{PathUtils.GetLastPart(filePath).BeforeFirst(".")}] ";
 
     /// <summary>
     /// 输出格式化后的日志文本。

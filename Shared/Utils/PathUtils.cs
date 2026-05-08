@@ -33,7 +33,7 @@ public static class PathUtils {
         string pathToShorten = fullName;
         if (fullName.EndsWithF(".jar", true)) keepFileName = true; // jar 文件的文件名需要保留原样，否则会导致 Forge 1.20.1 无法通过文件名识别模块名
         if (keepFileName && FileUtils.Exists(fullName)) {
-            pathToKeep = Path.GetFileName(fullName);
+            pathToKeep = PathUtils.GetLastPart(fullName);
             pathToShorten = PathUtils.RemoveLastPart(fullName);
         }
 
@@ -41,7 +41,7 @@ public static class PathUtils {
         while (!DirectoryUtils.Exists(pathToShorten) && !FileUtils.Exists(pathToShorten)) { // 如果路径不存在
             string parentPath = Path.GetDirectoryName(pathToShorten);
             if (string.IsNullOrEmpty(parentPath) || parentPath == pathToShorten) return fullName; // 已经到达根目录，全都不存在，直接返回
-            pathToKeep = Path.Combine(Path.GetFileName(pathToShorten), pathToKeep);
+            pathToKeep = Path.Combine(PathUtils.GetLastPart(pathToShorten), pathToKeep);
             pathToShorten = parentPath;
         }
         if (pathToShorten.Length <= 10) return fullName;
@@ -88,18 +88,61 @@ public static class PathUtils {
     /// 去除路径的最后一级，并移除末尾的分隔符。
     /// <code>
     /// "C:\foo\bar.txt" → "C:\foo"
-    /// "C:\foo\bar" → "C:\foo"
     /// "C:\foo\bar\" → "C:\foo"
+    /// "C:\foo\bar" → "C:\foo"
     /// "C:\foo\" → "C:"
     /// "https://foo.bar/file/pack.zip?arg=1" → "https://foo.bar/file"
     /// </code></summary>
-    public static string RemoveLastPart(string? path) {
+    public static string RemoveLastPart(string path) {
         if (path!.Contains("://")) { // 网络路径
             path = PathUtils.WithoutSeparator(path.BeforeFirst("#").BeforeFirst("?")); // 去除参数
             return PathUtils.WithoutSeparator(path).BeforeLast("/");
         } else { // 文件路径
             return PathUtils.WithoutSeparator(path!).BeforeLast("\\");
         }
+    }
+
+    /// <summary>
+    /// 获取路径的最后一级，即文件名，或当前文件夹名。
+    /// <code>
+    /// "C:\foo\bar.txt" → "bar.txt"
+    /// "C:\foo\bar\" → "bar"
+    /// "C:\foo\bar" → "bar"
+    /// "https://foo.bar/file/pack.zip?arg=1" → "pack.zip"
+    /// </code></summary>
+    public static string GetLastPart(string path) {
+        if (path!.Contains("://")) { // 网络路径
+            path = PathUtils.WithoutSeparator(path.BeforeFirst("#").BeforeFirst("?")); // 去除参数
+            return path.AfterLast("/");
+        } else { // 文件路径
+            return PathUtils.WithoutSeparator(path).AfterLast("\\");
+        }
+    }
+
+    /// <summary>
+    /// 获取路径或文件名中，仅不包含最后一级扩展名的部分。
+    /// <code>
+    /// "C:\foo\bar.txt" → "bar"
+    /// "create.jar.disabled" → "create.jar"
+    /// "https://foo.bar/file/page.xaml.vb?arg=1" → "page.xaml"
+    /// </code>
+    /// </summary>
+    public static string GetFileNameWithoutExtension(string path) 
+        => GetLastPart(path).BeforeLast(".");
+
+    /// <summary>
+    /// 获取路径或文件名中的最后一级文件扩展名，不包含 <c>.</c>，固定小写。
+    /// 如果没有 <c>.</c> 则返回空字符串。
+    /// <code>
+    /// "C:\FOO\BAR.TXT" → "txt"
+    /// "create.jar.disabled" → "disabled"
+    /// "C:\foo\bar" → ""
+    /// "https://foo.bar/file/page.xaml.vb?arg=1" → "vb"
+    /// </code>
+    /// </summary>
+    public static string GetExtension(string path) {
+        var name = GetLastPart(path);
+        return name.Contains(".") ? name.AfterLast(".").Lower() : "";
     }
 
     /// <summary>

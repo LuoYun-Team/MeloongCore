@@ -24,7 +24,7 @@ public class FileUtilsTest : TestWithFolder {
         string output = Path.Combine(tempFolder, "Extracted");
         FileUtils.ExtractToDirectory(GetTestFile(testFile), output, p => progress = p);
         Assert.Equal(1, progress);
-        Assert.Contains(containsText, File.ReadAllText(PathUtils.WithLongPath(Path.Combine(output, Path.GetFileNameWithoutExtension(testFile)))));
+        Assert.Contains(containsText, File.ReadAllText(PathUtils.WithLongPath(Path.Combine(output, PathUtils.GetFileNameWithoutExtension(testFile)))));
     }
 
     [Theory]

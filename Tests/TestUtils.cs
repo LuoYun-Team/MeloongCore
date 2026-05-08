@@ -25,7 +25,7 @@ public abstract class TestWithFolder {
     /// </summary>
     public string GetTestFile(string fileName) {
         var sourceFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestFiles", GetType().Name.Replace("Test", ""), fileName);
-        var distPath = Path.Combine(tempFolder, Path.GetFileName(sourceFilePath));
+        var distPath = Path.Combine(tempFolder, PathUtils.GetLastPart(sourceFilePath));
         FileUtils.Copy(sourceFilePath, distPath);
         return distPath;
     }

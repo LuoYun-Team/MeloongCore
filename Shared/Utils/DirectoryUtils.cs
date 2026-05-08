@@ -110,7 +110,7 @@ public static class DirectoryUtils {
                 } catch (DirectoryNotFoundException ex) { // #4549，也可能已被其他线程删除
                     if (DirectoryUtils.Exists(folder)) {
                         Logger.Warn(ex, $"该文件夹可能为孤立的符号链接，尝试直接删除（{folder}）");
-                        Directory.Delete(folder);
+                        Directory.Delete(folder, true);
                     } else {
                         throw;
                     }

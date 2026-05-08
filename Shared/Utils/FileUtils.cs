@@ -260,7 +260,7 @@ public static class FileUtils {
         DirectoryUtils.Create(outputDirectory);
         // 解压 gz（gz 不需要考虑编码）
         if (compressionFile.EndsWithF(".gz", true)) {
-            string outFilePath = Path.Combine(outputDirectory, Path.GetFileNameWithoutExtension(compressionFile));
+            string outFilePath = Path.Combine(outputDirectory, PathUtils.GetFileNameWithoutExtension(compressionFile));
             Logger.Trace($"解压 gz 文件：{compressionFile} → {outFilePath}");
             using var fileStream = FileUtils.ReadAsStream(compressionFile);
             using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
@@ -309,7 +309,7 @@ public static class FileUtils {
     public static void CreateZipFromFiles(string outputFullPath, params string[] sourceFiles) {
         var sources = new Dictionary<string, string>();
         foreach (var source in sourceFiles) {
-            string fileName = Path.GetFileName(source);
+            string fileName = PathUtils.GetLastPart(source);
             if (sources.ContainsKey(fileName)) throw new ArgumentException($"尝试将多个同文件名的文件放进压缩包中（{fileName}）", nameof(sourceFiles));
             sources.Add(fileName, source);
         }
