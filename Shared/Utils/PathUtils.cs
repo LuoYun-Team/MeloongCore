@@ -25,7 +25,7 @@ public static class PathUtils {
     /// </summary>
     public static string ToShortPath(string fullName, bool keepFileName = false) {
         if (string.IsNullOrEmpty(fullName)) return fullName;
-        fullName = PathUtils.WithoutLongPath(fullName.Replace('/', '\\'));
+        fullName = PathUtils.Normalize(fullName, false);
         if (fullName.Length <= 200) return fullName;
 
         // 保留文件名
@@ -93,6 +93,23 @@ public static class PathUtils {
         if (path.EndsWithF(Path.DirectorySeparatorChar) || path.EndsWithF(Path.AltDirectorySeparatorChar)) return path;
         return Path.GetDirectoryName(path) ?? "";
     }
+
+    /// <summary>
+    /// 将路径转换为标准格式：将短路径展开，将分隔符改为 \，去除前导的 <c>\\?\</c>，统一末尾是否包含分隔符。
+    /// </summary>
+    public static string Normalize(string path, bool withSeparator) {
+        path = PathUtils.WithoutLongPath(Path.GetFullPath(path)).Replace("/", @"\");
+        return withSeparator ? PathUtils.WithSeparator(path) : PathUtils.WithoutSeparator(path);
+    }
+
+    #endregion
+
+    #region 常用路径
+
+    /// <summary>
+    /// 程序可执行文件的所在文件夹，以 \ 结尾。
+    /// </summary>
+    public static string CurrentFolder => PathUtils.WithSeparator(AppDomain.CurrentDomain.BaseDirectory);
 
     #endregion
 

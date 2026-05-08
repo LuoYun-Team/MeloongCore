@@ -31,7 +31,6 @@ public static class DirectoryUtils {
     /// </summary>
     public static IEnumerable<string> GetFiles(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!DirectoryUtils.Exists(path)) return [];
-        Logger.Trace($"枚举文件（{searchPattern}，递归：{!topDirectoryOnly}）：{path}");
         return Directory.EnumerateFiles(PathUtils.WithLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories).
             Select(PathUtils.WithoutLongPath);
     }
@@ -42,7 +41,6 @@ public static class DirectoryUtils {
     /// </summary>
     public static IEnumerable<string> GetDirectories(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!DirectoryUtils.Exists(path)) return [];
-        Logger.Trace($"枚举文件夹（{searchPattern}，递归：{!topDirectoryOnly}）：{path}");
         return Directory.EnumerateDirectories(PathUtils.WithLongPath(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories).
             Select(PathUtils.WithoutLongPath);
     }
@@ -60,19 +58,19 @@ public static class DirectoryUtils {
     /// 复制文件夹。
     /// 若原文件夹不存在，则不执行。
     /// </summary>
-    public static void Copy(string sourceDirName, string destDirName, Action<double>? progressHandler = null) {
-        if (!DirectoryUtils.Exists(sourceDirName)) {
-            Logger.Info($"尝试复制文件夹，但原文件夹不存在，已跳过复制：{sourceDirName} → {destDirName}");
+    public static void Copy(string sourceFolder, string destFolder, Action<double>? progressHandler = null) {
+        if (!DirectoryUtils.Exists(sourceFolder)) {
+            Logger.Info($"尝试复制文件夹，但原文件夹不存在，已跳过复制：{sourceFolder} → {destFolder}");
             progressHandler?.Invoke(1);
             return;
         }
-        sourceDirName = PathUtils.WithoutLongPath(PathUtils.WithSeparator(sourceDirName)).Replace("/", @"\");
-        destDirName = PathUtils.WithoutLongPath(PathUtils.WithSeparator(destDirName)).Replace("/", @"\");
+        sourceFolder = PathUtils.Normalize(sourceFolder, true);
+        destFolder = PathUtils.Normalize(destFolder, true);
         int doneCount = 0;
-        Lazy<int> totalCount = new(() => DirectoryUtils.GetFiles(sourceDirName).Count());
-        Logger.Trace($"复制文件夹：{sourceDirName} → {destDirName}");
-        foreach (var file in DirectoryUtils.GetFiles(sourceDirName)) {
-            FileUtils.Copy(file, file.Replace(sourceDirName, destDirName));
+        Lazy<int> totalCount = new(() => DirectoryUtils.GetFiles(sourceFolder).Count());
+        Logger.Trace($"复制文件夹：{sourceFolder} → {destFolder}");
+        foreach (var file in DirectoryUtils.GetFiles(sourceFolder)) {
+            FileUtils.Copy(file, file.Replace(sourceFolder, destFolder));
             doneCount++;
             if (progressHandler is not null) progressHandler?.Invoke((double) doneCount / totalCount.Value);
         }
@@ -81,23 +79,52 @@ public static class DirectoryUtils {
     /// <summary>
     /// 剪切文件夹。
     /// </summary>
-    public static void Move(string sourceDirName, string destDirName) {
-        if (!DirectoryUtils.Exists(sourceDirName)) return;
-        DirectoryUtils.Delete(destDirName); // Move 要求不存在对应文件夹
-        Logger.Trace($"剪切文件夹：{sourceDirName} → {destDirName}");
-        Directory.Move(PathUtils.WithLongPath(sourceDirName), PathUtils.WithLongPath(destDirName));
+    public static void Move(string sourceFolder, string destFolder) {
+        if (!DirectoryUtils.Exists(sourceFolder)) return;
+        DirectoryUtils.Delete(destFolder); // Move 要求不存在对应文件夹
+        Logger.Trace($"剪切文件夹：{sourceFolder} → {destFolder}");
+        Directory.Move(PathUtils.WithLongPath(sourceFolder), PathUtils.WithLongPath(destFolder));
     }
 
     /// <summary>
     /// 删除文件夹。
     /// </summary>
-    public static void Delete(string dirPath, bool toRecycleBin = false) {
-        if (!DirectoryUtils.Exists(dirPath)) return;
-        Logger.Trace($"{(toRecycleBin ? "将文件夹删除到回收站" : "删除文件夹")}：{dirPath}");
+    public static void Delete(string folder, bool toRecycleBin = false) {
+        // 安全检查
+        if (!DirectoryUtils.Exists(folder)) return;
+        Logger.Trace($"{(toRecycleBin ? "将文件夹删除到回收站" : "删除文件夹")}：{folder}");
+        folder = PathUtils.Normalize(folder, true);
+        if (folder == Path.GetPathRoot(folder))
+            throw new UnauthorizedAccessException($"不应删除磁盘根目录：{folder}");
+        if (criticalFolders.Value.Any(f => f.StartsWithF(folder, ignoreCase: true)))
+            throw new UnauthorizedAccessException($"不应删除的文件夹：{folder}");
+        // 删除
         if (toRecycleBin) {
-            FileUtils.DeleteToRecycleBin(dirPath);
+            FileUtils.DeleteToRecycleBin(folder); // 删除到回收站
         } else {
-            Directory.Delete(PathUtils.WithLongPath(dirPath), recursive:true);
+            DeleteInternal(PathUtils.WithLongPath(folder)); // 永久删除
+            static void DeleteInternal(string folder) {
+                try {
+                    foreach (string filePath in DirectoryUtils.GetFiles(folder, true)) FileUtils.Delete(filePath); // 删除文件
+                    foreach (string str in DirectoryUtils.GetDirectories(folder, true)) DeleteInternal(str); // 递归删除子文件夹
+                    Directory.Delete(folder, true); // 删除空文件夹
+                } catch (DirectoryNotFoundException ex) { // #4549，也可能已被其他线程删除
+                    if (DirectoryUtils.Exists(folder)) {
+                        Logger.Warn(ex, $"该文件夹可能为孤立的符号链接，尝试直接删除（{folder}）");
+                        Directory.Delete(folder);
+                    } else {
+                        throw;
+                    }
+                }
+            }
         }
     }
+    private static readonly Lazy<HashSet<string>> criticalFolders = new(() => new(new[] {
+        PathUtils.CurrentFolder,
+        Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+        Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads") // 下载文件夹没有 SpecialFolder 枚举
+    }.Select(f => PathUtils.Normalize(f, true))));
+
 }
