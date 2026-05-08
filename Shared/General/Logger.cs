@@ -213,7 +213,7 @@ public class BaseLogger {
     /// <summary>
     /// 格式化日志文本。
     /// </summary>
-    protected virtual string Format(string text, LogLevel level, string filePath, Exception? ex) {
+    public virtual string Format(string text, LogLevel level, string filePath, Exception? ex) {
         string prefix = GetLogPrefix(level, filePath);
         return text
             .ReplaceLineEndings("\n", mergeMultiple: true).Split(['\n'], StringSplitOptions.RemoveEmptyEntries)
@@ -226,14 +226,14 @@ public class BaseLogger {
     /// <summary>
     /// 输出格式化后的日志文本。
     /// </summary>
-    protected virtual void Output(string formattedMessage, LogLevel level) {
+    public virtual void Output(string formattedMessage, LogLevel level) {
         Debug.WriteLine(formattedMessage);
     }
 
     /// <summary>
     /// 在调用 Log 方法的线程执行 <see cref="LogBehavior"/>。
     /// </summary>
-    protected virtual void HandleBehavior(string? rawMessage, string formattedMessage, LogBehavior behavior, Exception? ex) {
+    public virtual void HandleBehavior(string? rawMessage, string formattedMessage, LogBehavior behavior, Exception? ex) {
     }
 
 }
@@ -245,7 +245,7 @@ public class BaseLogger {
 public class FileLogger : BaseLogger, IDisposable {
 
     /// <inheritdoc/>
-    protected override void Output(string formattedText, LogLevel level) {
+    public override void Output(string formattedText, LogLevel level) {
         base.Output(formattedText, level);
         if (!writerAvailable && queue.Count >= 100) return; // 在 writer 就绪前，最多缓存 100 条日志
         queue.Enqueue(formattedText);

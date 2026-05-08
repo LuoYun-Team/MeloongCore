@@ -1,12 +1,12 @@
 namespace MeloongCore.Tests;
 public class FileUtilsTest : TestWithFolder {
 
-    #region 压缩包
+    #region 解压
 
     [Theory]
     [InlineData("GB Encoding.zip")]
     [InlineData("UTF8 Encoding.zip")]
-    public void 压缩包_ReadZip(string testFile) {
+    public void 解压_ReadZip(string testFile) {
         double progress = 0;
         string output = Path.Combine(tempFolder, "Extracted");
         FileUtils.ExtractToDirectory(GetTestFile(testFile), output, p => progress = p);
@@ -19,7 +19,7 @@ public class FileUtilsTest : TestWithFolder {
 
     [Theory]
     [InlineData("GZ.gz", "LTCat")]
-    public void 压缩包_ReadGz(string testFile, string containsText) {
+    public void 解压_ReadGz(string testFile, string containsText) {
         double progress = 0;
         string output = Path.Combine(tempFolder, "Extracted");
         FileUtils.ExtractToDirectory(GetTestFile(testFile), output, p => progress = p);
@@ -30,16 +30,14 @@ public class FileUtilsTest : TestWithFolder {
     [Theory]
     [InlineData("Corrupted.zip")]
     [InlineData("Not zip.zip")]
-    public void 压缩包_ReadBad(string testFile) {
-        Assert.Throws<InvalidDataException>(() => FileUtils.ExtractToDirectory(GetTestFile(testFile), tempFolder));
-    }
+    public void 解压_ReadBad(string testFile) 
+        => Assert.Throws<InvalidDataException>(() => FileUtils.ExtractToDirectory(GetTestFile(testFile), tempFolder));
 
     [Theory]
     [InlineData("DotDot ZipSlip.zip")]
     [InlineData("AbsPath ZipSlip.zip")]
-    public void 压缩包_ZipSlip(string testFile) {
-        Assert.Throws<FileUtils.ZipSlipException>(() => FileUtils.ExtractToDirectory(GetTestFile(testFile), tempFolder));
-    }
+    public void 解压_ZipSlip(string testFile) 
+        => Assert.Throws<FileUtils.ZipSlipException>(() => FileUtils.ExtractToDirectory(GetTestFile(testFile), tempFolder));
 
     #endregion
 

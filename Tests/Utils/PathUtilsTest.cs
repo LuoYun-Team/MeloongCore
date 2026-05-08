@@ -1,6 +1,8 @@
 ﻿namespace MeloongCore.Tests;
 public class PathUtilsTests {
 
+    #region 路径处理
+
     [Theory]
     [InlineData(@"\\?\C:\foo\bar.txt", @"\\?\C:\foo")]
     [InlineData(@"C:\foo\bar.txt", @"C:\foo")]
@@ -70,5 +72,7 @@ public class PathUtilsTests {
     [InlineData("https://foo.bar/file?arg=1", "")]
     public void 路径处理_GetExtension(string input, string expected)
         => Assert.Equal(expected, PathUtils.GetExtension(input));
+
+    #endregion
 
 }
