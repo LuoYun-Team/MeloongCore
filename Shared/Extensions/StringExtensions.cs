@@ -98,7 +98,7 @@ public static class StringExtensions {
     /// <code>"2024/11/08".BeforeFirst("/") => "2024"</code>
     /// </summary>
     public static string BeforeFirst(this string str, string text, bool ignoreCase = false) {
-        int pos = string.IsNullOrEmpty(text) ? -1 : str.IndexOfF(text!, ignoreCase);
+        int pos = string.IsNullOrEmpty(text) ? -1 : str.IndexOfF(text, ignoreCase);
         if (pos < 0) return str;
         return str.Substring(0, pos);
     }
@@ -107,7 +107,7 @@ public static class StringExtensions {
     /// <code>"2024/11/08".BeforeLast("/") => "2024/11"</code>
     /// </summary>
     public static string BeforeLast(this string str, string text, bool ignoreCase = false) {
-        int pos = string.IsNullOrEmpty(text) ? -1 : str.LastIndexOfF(text!, ignoreCase);
+        int pos = string.IsNullOrEmpty(text) ? -1 : str.LastIndexOfF(text, ignoreCase);
         if (pos < 0) return str;
         return str.Substring(0, pos);
     }
@@ -117,7 +117,7 @@ public static class StringExtensions {
     /// <code>"2024/11/08".AfterFirst("/") => "11/08"</code>
     /// </summary>
     public static string AfterFirst(this string str, string text, bool ignoreCase = false) {
-        int pos = string.IsNullOrEmpty(text) ? -1 : str.IndexOfF(text!, ignoreCase);
+        int pos = string.IsNullOrEmpty(text) ? -1 : str.IndexOfF(text, ignoreCase);
         if (pos < 0) return str;
         return str.Substring(pos + text!.Length);
     }
@@ -126,7 +126,7 @@ public static class StringExtensions {
     /// <code>"2024/11/08".AfterLast("/") => "08"</code>
     /// </summary>
     public static string AfterLast(this string str, string text, bool ignoreCase = false) {
-        int pos = string.IsNullOrEmpty(text) ? -1 : str.LastIndexOfF(text!, ignoreCase);
+        int pos = string.IsNullOrEmpty(text) ? -1 : str.LastIndexOfF(text, ignoreCase);
         if (pos < 0) return str;
         return str.Substring(pos + text!.Length);
     }

@@ -68,7 +68,7 @@ public static class FileUtils {
     /// 若文件已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, byte[] content) {
-        DirectoryUtils.Create(filePath, isFilePath: true);
+        DirectoryUtils.Create(PathUtils.RemoveLastPart(filePath));
         Logger.Trace($"写入文件：{filePath}（{content.Length} 字节）");
         ResilientUtils.RetryOn<IOException>(() 
             => File.WriteAllBytes(PathUtils.WithLongPath(filePath), content));
@@ -90,7 +90,7 @@ public static class FileUtils {
     /// 若文件已存在，则会覆盖原文件。
     /// </summary>
     public static FileStream CreateAsStream(string filePath) {
-        DirectoryUtils.Create(filePath, isFilePath: true);
+        DirectoryUtils.Create(PathUtils.RemoveLastPart(filePath));
         Logger.Trace($"创建文件流：{filePath}");
         return ResilientUtils.RetryOn<IOException, FileStream>(()
             => new FileStream(PathUtils.WithLongPath(filePath), FileMode.Create));
@@ -111,7 +111,7 @@ public static class FileUtils {
             Logger.Info($"尝试复制文件，但原文件不存在，已跳过复制：{sourceFilePath} → {destFilePath}");
             return;
         }
-        DirectoryUtils.Create(destFilePath, isFilePath: true);
+        DirectoryUtils.Create(PathUtils.RemoveLastPart(destFilePath));
         Logger.Trace($"复制文件：{sourceFilePath} → {destFilePath}");
         ResilientUtils.RetryOn<IOException>(()
             => File.Copy(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath), true));
@@ -123,7 +123,7 @@ public static class FileUtils {
     /// </summary>
     public static void Move(string sourceFilePath, string destFilePath) {
         if (sourceFilePath == destFilePath) return; // 如果移动同一个文件则跳过
-        DirectoryUtils.Create(destFilePath, isFilePath: true);
+        DirectoryUtils.Create(PathUtils.RemoveLastPart(destFilePath));
         FileUtils.Delete(destFilePath);
         Logger.Trace($"剪切文件：{sourceFilePath} → {destFilePath}");
         ResilientUtils.RetryOn<IOException>(()
@@ -265,6 +265,7 @@ public static class FileUtils {
             using var fileStream = FileUtils.ReadAsStream(compressionFile);
             using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
             FileUtils.Write(outFilePath, gzipStream);
+            progressHandler?.Invoke(1);
             return;
         }
         // 解压 zip
@@ -294,7 +295,7 @@ public static class FileUtils {
     public static void CreateZipFromDirectory(string outputFullPath, string sourceDirectory) {
         outputFullPath = PathUtils.WithLongPath(outputFullPath);
         sourceDirectory = PathUtils.WithLongPath(sourceDirectory);
-        DirectoryUtils.Create(outputFullPath, isFilePath: true);
+        DirectoryUtils.Create(PathUtils.RemoveLastPart(outputFullPath));
         FileUtils.Delete(outputFullPath);
         Logger.Trace($"将文件夹中的内容压缩为 zip 文件：{sourceDirectory} → {outputFullPath}");
         ResilientUtils.RetryOn<IOException>(()
@@ -322,7 +323,7 @@ public static class FileUtils {
     /// <param name="sources">键为 zip 文件下的路径，值为文件的本地路径。</param>
     public static void CreateZipFromFiles(string outputFullPath, IDictionary<string, string> sources) {
         outputFullPath = PathUtils.WithLongPath(outputFullPath);
-        DirectoryUtils.Create(outputFullPath, isFilePath: true);
+        DirectoryUtils.Create(PathUtils.RemoveLastPart(outputFullPath));
         FileUtils.Delete(outputFullPath);
         using var archive = ResilientUtils.RetryOn<IOException, ZipArchive>(()
             => ZipFile.Open(outputFullPath, ZipArchiveMode.Create));

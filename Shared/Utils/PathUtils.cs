@@ -34,7 +34,7 @@ public static class PathUtils {
         if (fullName.EndsWithF(".jar", true)) keepFileName = true; // jar 文件的文件名需要保留原样，否则会导致 Forge 1.20.1 无法通过文件名识别模块名
         if (keepFileName && FileUtils.Exists(fullName)) {
             pathToKeep = Path.GetFileName(fullName);
-            pathToShorten = PathUtils.RemoveFileName(fullName);
+            pathToShorten = PathUtils.RemoveLastPart(fullName);
         }
 
         // 逐级向上寻找已存在的文件夹，将不存在的部分挪到 suffix，不再缩短
@@ -85,13 +85,21 @@ public static class PathUtils {
     #region 路径处理
 
     /// <summary>
-    /// 去除路径末尾的文件名。
-    /// 若路径以分隔符结尾，则不作处理。
-    /// </summary>
-    public static string RemoveFileName(string? path) {
-        if (path is null || string.IsNullOrEmpty(path)) return "";
-        if (path.EndsWithF(Path.DirectorySeparatorChar) || path.EndsWithF(Path.AltDirectorySeparatorChar)) return path;
-        return Path.GetDirectoryName(path) ?? "";
+    /// 去除路径的最后一级，并移除末尾的分隔符。
+    /// <code>
+    /// "C:\foo\bar.txt" → "C:\foo"
+    /// "C:\foo\bar" → "C:\foo"
+    /// "C:\foo\bar\" → "C:\foo"
+    /// "C:\foo\" → "C:"
+    /// "https://foo.bar/file/pack.zip?arg=1" → "https://foo.bar/file"
+    /// </code></summary>
+    public static string RemoveLastPart(string? path) {
+        if (path!.Contains("://")) { // 网络路径
+            path = PathUtils.WithoutSeparator(path.BeforeFirst("#").BeforeFirst("?")); // 去除参数
+            return PathUtils.WithoutSeparator(path).BeforeLast("/");
+        } else { // 文件路径
+            return PathUtils.WithoutSeparator(path!).BeforeLast("\\");
+        }
     }
 
     /// <summary>

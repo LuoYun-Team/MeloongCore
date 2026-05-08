@@ -6,7 +6,7 @@ public class FileUtilsTest : TestWithFolder {
     [Theory]
     [InlineData("GB Encoding.zip")]
     [InlineData("UTF8 Encoding.zip")]
-    public void Compression_ReadZip(string testFile) {
+    public void 压缩包_ReadZip(string testFile) {
         double progress = 0;
         string output = Path.Combine(tempFolder, "Extracted");
         FileUtils.ExtractToDirectory(GetTestFile(testFile), output, p => progress = p);
@@ -19,7 +19,7 @@ public class FileUtilsTest : TestWithFolder {
 
     [Theory]
     [InlineData("GZ.gz", "LTCat")]
-    public void Compression_ReadGz(string testFile, string containsText) {
+    public void 压缩包_ReadGz(string testFile, string containsText) {
         double progress = 0;
         string output = Path.Combine(tempFolder, "Extracted");
         FileUtils.ExtractToDirectory(GetTestFile(testFile), output, p => progress = p);
@@ -30,14 +30,14 @@ public class FileUtilsTest : TestWithFolder {
     [Theory]
     [InlineData("Corrupted.zip")]
     [InlineData("Not zip.zip")]
-    public void Compression_ReadBad(string testFile) {
+    public void 压缩包_ReadBad(string testFile) {
         Assert.Throws<InvalidDataException>(() => FileUtils.ExtractToDirectory(GetTestFile(testFile), tempFolder));
     }
 
     [Theory]
     [InlineData("DotDot ZipSlip.zip")]
     [InlineData("AbsPath ZipSlip.zip")]
-    public void Compression_ZipSlip(string testFile) {
+    public void 压缩包_ZipSlip(string testFile) {
         Assert.Throws<FileUtils.ZipSlipException>(() => FileUtils.ExtractToDirectory(GetTestFile(testFile), tempFolder));
     }
 
