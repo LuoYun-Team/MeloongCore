@@ -101,9 +101,10 @@ public static class DirectoryUtils {
         if (toRecycleBin) {
             FileUtils.DeleteToRecycleBin(folder); // 删除到回收站
         } else {
-            DeleteInternal(PathUtils.WithLongPath(folder)); // 永久删除
+            DeleteInternal(folder); // 永久删除
             static void DeleteInternal(string folder) {
                 try {
+                    folder = PathUtils.WithLongPath(folder);
                     foreach (string filePath in DirectoryUtils.GetFiles(folder, true)) FileUtils.Delete(filePath); // 删除文件
                     foreach (string str in DirectoryUtils.GetDirectories(folder, true)) DeleteInternal(str); // 递归删除子文件夹
                     ResilientUtils.RetryOn<IOException>(() => Directory.Delete(folder, true)); // 最终删除文件夹
