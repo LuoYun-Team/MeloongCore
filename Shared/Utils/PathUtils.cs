@@ -25,6 +25,7 @@ public static class PathUtils {
     /// </summary>
     public static string ToShortPath(string fullName, bool keepFileName = false) {
         if (string.IsNullOrEmpty(fullName)) return fullName;
+        if (!fullName.Contains(":")) return fullName;
         fullName = PathUtils.Normalize(fullName, false);
         if (fullName.Length <= 200) return fullName;
 

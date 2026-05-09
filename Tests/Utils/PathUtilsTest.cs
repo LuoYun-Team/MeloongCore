@@ -6,9 +6,9 @@ public class PathUtilsTests {
     [Test]
     [Arguments(@"\\?\C:\foo\bar.txt", @"\\?\C:\foo")]
     [Arguments(@"C:\foo\bar.txt", @"C:\foo")]
-    [Arguments(@"\\?\C:\foo\bar", @"\\?\C:\foo")]
+    [Arguments(@"\\?\C:\foo\Bar", @"\\?\C:\foo")]
     [Arguments(@"C:\foo\bar", @"C:\foo")]
-    [Arguments(@"C:\foo\bar\", @"C:\foo")]
+    [Arguments(@"C:\Foo\bar\", @"C:\Foo")]
     [Arguments(@"\\?\C:\foo\", @"\\?\C:")]
     [Arguments(@"C:\foo", @"C:")]
     [Arguments(@"C:\foo\", @"C:")]
@@ -31,7 +31,7 @@ public class PathUtilsTests {
     [Arguments("https://foo.bar/file/long/pack.zip?arg=1", "pack.zip")]
     [Arguments("https://foo.bar/file/", "file")]
     [Arguments("https://foo.bar/file/?arg=1", "file")]
-    [Arguments("https://foo.bar/file?arg=1", "file")]
+    [Arguments("https://foo.bar/File?arg=1", "File")]
     public async Task 路径处理_GetLastPart(string input, string expected)
         => await Assert.That(PathUtils.GetLastPart(input)).IsEqualTo(expected);
 
@@ -44,7 +44,7 @@ public class PathUtilsTests {
     [Arguments(@"\\?\C:\foo\", "foo")]
     [Arguments(@"C:\foo", "foo")]
     [Arguments(@"C:\foo\", "foo")]
-    [Arguments("create.jar.disabled", "create.jar")]
+    [Arguments("cREate.jar.disabled", "cREate.jar")]
     [Arguments("create.jar", "create")]
     [Arguments("create", "create")]
     [Arguments("https://foo.bar/file/page.xaml.vb?arg=1", "page.xaml")]
