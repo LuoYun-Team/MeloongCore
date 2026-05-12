@@ -2,7 +2,7 @@
 public static class ResilientUtils {
 
     /// <summary>
-    /// 在抛出异常时，延迟并自动重试。
+    /// 在抛出任意异常时，延迟并自动重试。
     /// </summary>
     public static void Retry(Action action, int maxAttempts = 2, int delayMs = 200, [CallerMemberName] string caller = "")
         => RetryOn<Exception>(action, maxAttempts, delayMs, caller);
@@ -13,7 +13,7 @@ public static class ResilientUtils {
         => RetryOn<TException, object?>(() => { action(); return null; }, maxAttempts, delayMs, caller);
 
     /// <summary>
-    /// 在抛出异常时，延迟并自动重试。
+    /// 在抛出任意异常时，延迟并自动重试。
     /// </summary>
     public static void Retry<TOut>(Func<TOut> func, int maxAttempts = 2, int delayMs = 200, [CallerMemberName] string caller = "")
         => RetryOn<Exception, TOut>(func, maxAttempts, delayMs, caller);

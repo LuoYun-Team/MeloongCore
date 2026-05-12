@@ -103,7 +103,8 @@ public static class DirectoryUtils {
             // 同一磁盘剪切，直接调用 Move（这只修改文件夹名，效率更高）
             Logger.Trace($"剪切文件夹到同一磁盘：{sourceFolder} → {destFolder}");
             DirectoryUtils.Delete(destFolder); // Move 要求此前不存在对应文件夹
-            Directory.Move(PathUtils.ForApi(sourceFolder), PathUtils.ForApi(destFolder));
+            ResilientUtils.RetryOn<IOException>(() 
+                => Directory.Move(PathUtils.ForApi(sourceFolder), PathUtils.ForApi(destFolder)));
         } else {
             // 不同磁盘，必须先复制再删除，这就是我们傻逼微软
             Logger.Trace($"剪切文件夹到不同磁盘：{sourceFolder} → {destFolder}");
