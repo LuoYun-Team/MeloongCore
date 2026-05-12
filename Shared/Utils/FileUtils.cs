@@ -9,7 +9,8 @@ public static class FileUtils {
     /// 打开指定文件的只读 <see cref="FileStream"/>。
     /// </summary>
     public static FileStream ReadAsStream(string filePath)
-        => new(PathUtils.ForApi(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        => ResilientUtils.RetryOn<IOException, FileStream>(()
+            => new(PathUtils.ForApi(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
 
     /// <summary>
     /// 读取文件中的所有内容。
