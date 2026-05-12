@@ -1,5 +1,5 @@
 ﻿namespace MeloongCore.Tests;
-public class PathUtilsTests {
+public class PathUtilsTests : TestBase {
 
     #region 路径处理
 
