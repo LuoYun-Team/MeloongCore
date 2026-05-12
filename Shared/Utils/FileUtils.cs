@@ -14,8 +14,12 @@ public static class FileUtils {
     /// <summary>
     /// 读取文件中的所有内容。
     /// </summary>
-    public static byte[] ReadAsBytes(string filePath)
-        => File.ReadAllBytes(PathUtils.WithLongPath(filePath));
+    public static byte[] ReadAsBytes(string filePath) {
+        using Stream fs = ReadAsStream(filePath); // 不能使用 File.ReadAllBytes，它不指定 FileShare.ReadWrite，会在文件被占用时抛出异常
+        using MemoryStream ms = new();
+        fs.CopyTo(ms);
+        return ms.ToArray();
+    }
 
     /// <summary>
     /// 读取文件中的所有内容。
