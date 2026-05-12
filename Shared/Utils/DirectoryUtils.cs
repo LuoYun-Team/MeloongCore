@@ -39,7 +39,7 @@ public static class DirectoryUtils {
     public static IEnumerable<string> GetFiles(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!DirectoryUtils.Exists(path)) return [];
         return Directory.EnumerateFiles(PathUtils.ForApi(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories).
-            Select(PathUtils.WithoutLongPath);
+            Select(PathUtils.RemoveExtendedPrefix);
     }
 
     /// <summary>
@@ -49,7 +49,7 @@ public static class DirectoryUtils {
     public static IEnumerable<string> GetDirectories(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
         if (!DirectoryUtils.Exists(path)) return [];
         return Directory.EnumerateDirectories(PathUtils.ForApi(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories).
-            Select(PathUtils.WithoutLongPath);
+            Select(PathUtils.RemoveExtendedPrefix);
     }
 
     /// <summary>

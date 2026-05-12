@@ -6,13 +6,13 @@ public static class PathUtils {
     /// <summary>
     /// 确保路径的末尾包含任意文件夹分隔符。
     /// </summary>
-    public static string WithSeparator(string folder) 
+    public static string AddSlashSuffix(string folder) 
         => folder + (folder.EndsWithF(Path.DirectorySeparatorChar) || folder.EndsWithF(Path.AltDirectorySeparatorChar) ? "" : Path.DirectorySeparatorChar);
 
     /// <summary>
     /// 确保路径的结尾不包含文件夹分隔符。
     /// </summary>
-    public static string WithoutSeparator(string folder) 
+    public static string RemoveSlashSuffix(string folder) 
         => folder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
     #endregion
@@ -28,7 +28,6 @@ public static class PathUtils {
         fullName = PathUtils.ForCompare(fullName);
         if (!fullName.Contains(":")) return fullName;
         if (fullName.Length <= 200) return fullName;
-
         // 保留文件名
         string pathToKeep = "";
         string pathToShorten = fullName;
@@ -37,7 +36,6 @@ public static class PathUtils {
             pathToKeep = PathUtils.GetLastPart(fullName);
             pathToShorten = PathUtils.RemoveLastPart(fullName);
         }
-
         // 逐级向上寻找已存在的文件夹，将不存在的部分挪到 suffix，不再缩短
         while (!DirectoryUtils.Exists(pathToShorten) && !FileUtils.Exists(pathToShorten)) { // 如果路径不存在
             string parentPath = Path.GetDirectoryName(pathToShorten);
@@ -46,25 +44,24 @@ public static class PathUtils {
             pathToShorten = parentPath;
         }
         if (pathToShorten.Length <= 10) return fullName;
-
-        // 缩短路径
+        // 实际缩短路径
         char[] buffer = new char[260];
         int result = GetShortPathNameW(PathUtils.ForApi(pathToShorten), buffer, buffer.Length);
         if (result == 0) return fullName;
         string shortPath = new(buffer, 0, result);
-        return PathUtils.WithoutSeparator(PathUtils.WithoutLongPath(Path.Combine(shortPath, pathToKeep)));
+        return PathUtils.RemoveSlashSuffix(PathUtils.RemoveExtendedPrefix(Path.Combine(shortPath, pathToKeep)));
     }
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetShortPathNameW(string lpszLongPath, [Out] char[] buffer, int cchBuffer);
 
     /// <summary>
-    /// 将完整路径转换为以 <c>\\?\</c> 开头的标准长路径格式。
-    /// 这会去除路径末尾的分隔符，且将 / 替换为 \。
+    /// 将完整路径转换为以 <c>\\?\</c> 开头的扩展格式。
+    /// 这会去除路径末尾的分隔符，将 / 替换为 \。
     /// </summary>
-    public static string WithLongPath(string path) {
+    public static string ToExtendedFormat(string path) {
         if (string.IsNullOrWhiteSpace(path)) return path;
         if (path.StartsWithF(@"\\?\")) return path; // 已经是长路径
-        path = WithoutSeparator(path).Replace('/', '\\'); // API 要求这个格式……
+        path = RemoveSlashSuffix(path).Replace('/', '\\'); // API 要求这个格式……
         if (path.StartsWithF(@"\\")) {
             return $@"\\?\UNC\{path.Substring(2)}";
         } else {
@@ -75,7 +72,7 @@ public static class PathUtils {
     /// <summary>
     /// 去除路径开头的 <c>\\?\</c>。
     /// </summary>
-    public static string WithoutLongPath(string path) {
+    public static string RemoveExtendedPrefix(string path) {
         if (path.StartsWithF(@"\\?\UNC\")) return @"\\" + path.AfterLast(@"\\?\UNC\");
         if (path.StartsWithF(@"\\?\")) return path.AfterLast(@"\\?\");
         return path;
@@ -96,10 +93,10 @@ public static class PathUtils {
     /// </code></summary>
     public static string RemoveLastPart(string path) {
         if (path!.Contains("://")) { // 网络路径
-            path = PathUtils.WithoutSeparator(path.BeforeFirst("#").BeforeFirst("?")); // 去除参数
-            return PathUtils.WithoutSeparator(path).BeforeLast("/");
+            path = PathUtils.RemoveSlashSuffix(path.BeforeFirst("#").BeforeFirst("?")); // 去除参数
+            return PathUtils.RemoveSlashSuffix(path).BeforeLast("/");
         } else { // 文件路径
-            return PathUtils.WithoutSeparator(path!).BeforeLast("\\");
+            return PathUtils.RemoveSlashSuffix(path!).BeforeLast("\\");
         }
     }
 
@@ -113,10 +110,10 @@ public static class PathUtils {
     /// </code></summary>
     public static string GetLastPart(string path) {
         if (path!.Contains("://")) { // 网络路径
-            path = PathUtils.WithoutSeparator(path.BeforeFirst("#").BeforeFirst("?")); // 去除参数
+            path = PathUtils.RemoveSlashSuffix(path.BeforeFirst("#").BeforeFirst("?")); // 去除参数
             return path.AfterLast("/");
         } else { // 文件路径
-            return PathUtils.WithoutSeparator(path).AfterLast("\\");
+            return PathUtils.RemoveSlashSuffix(path).AfterLast("\\");
         }
     }
 
@@ -152,7 +149,7 @@ public static class PathUtils {
     /// </summary>
     public static char? GetDiskName(string? path) {
         if (string.IsNullOrEmpty(path)) return null;
-        path = PathUtils.WithoutLongPath(path!);
+        path = PathUtils.RemoveExtendedPrefix(path!);
         if (path.StartsWithF(@"\\") || path.StartsWithF("/")) return null;
         return char.ToUpper(path[0]);
     }
@@ -162,17 +159,17 @@ public static class PathUtils {
     /// <para/>具体而言：将短路径展开，去除前导的 <c>\\?\</c>，将分隔符改为 \，去除末尾的分隔符。
     /// </summary>
     public static string ForCompare(string path) 
-        => PathUtils.WithoutSeparator(PathUtils.WithoutLongPath(Path.GetFullPath(path)).Replace("/", @"\"));
+        => PathUtils.RemoveSlashSuffix(PathUtils.RemoveExtendedPrefix(Path.GetFullPath(path)).Replace("/", @"\"));
 
     /// <summary>
     /// 将路径转换为兼容各种 Windows API 的格式。
     /// <para/>具体而言：将分隔符改为 \。添加前导的 <c>\\?\</c>。若为驱动器则添加末尾分隔符，否则去除分隔符。
     /// </summary>
     public static string ForApi(string path) {
-        path = PathUtils.WithLongPath(path);
+        path = PathUtils.ToExtendedFormat(path);
         if (path.EndsWithF(":")) path += @"\"; // 驱动器路径必须保留末尾的分隔符
         if (path.EndsWithF(@":\")) return path;
-        return PathUtils.WithoutSeparator(path);
+        return PathUtils.RemoveSlashSuffix(path);
     }
 
     #endregion
@@ -182,7 +179,7 @@ public static class PathUtils {
     /// <summary>
     /// 程序可执行文件的所在文件夹，以 \ 结尾。
     /// </summary>
-    public static string CurrentFolder => PathUtils.WithSeparator(AppDomain.CurrentDomain.BaseDirectory);
+    public static string CurrentFolder => PathUtils.AddSlashSuffix(AppDomain.CurrentDomain.BaseDirectory);
 
     #endregion
 

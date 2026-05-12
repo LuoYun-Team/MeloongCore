@@ -197,7 +197,7 @@ public static class FileUtils {
             IFileOperation? op = null;
             try {
                 var iid = typeof(IShellItem).GUID;
-                Marshal.ThrowExceptionForHR(SHCreateItemFromParsingName(PathUtils.WithoutLongPath(target), IntPtr.Zero, ref iid, out item));
+                Marshal.ThrowExceptionForHR(SHCreateItemFromParsingName(PathUtils.RemoveExtendedPrefix(target), IntPtr.Zero, ref iid, out item));
                 op = (IFileOperation) new FileOperation();
                 op.SetOperationFlags(0x0040 | 0x0010 | 0x0004); // FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT
                 op.DeleteItem(item, IntPtr.Zero);
@@ -318,7 +318,7 @@ public static class FileUtils {
             if (string.IsNullOrEmpty(entry.Name)) continue; // 跳过文件夹条目（ZipArchive 会将文件夹也作为一个 entry，但它们的 Name 为空）
             // ZipSlip 修复
             string outputFilePath = PathUtils.ForCompare(Path.Combine(outputDirectory, entry.FullName));
-            if (!outputFilePath.StartsWithF(PathUtils.WithSeparator(PathUtils.ForCompare(outputDirectory)), ignoreCase:true))
+            if (!outputFilePath.StartsWithF(PathUtils.AddSlashSuffix(PathUtils.ForCompare(outputDirectory)), ignoreCase:true))
                 throw new ZipSlipException($"Zip 文件项 {entry.FullName} 的路径在压缩包之外，这可能导致安全问题");
             // 实际的解压
             using var entryStream = entry.Open();

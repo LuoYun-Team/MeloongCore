@@ -13,8 +13,8 @@ public class FileUtilsTest : TestWithFolder {
         await Assert.That(progress).IsEqualTo(1);
         await Assert.That(DirectoryUtils.Exists(Path.Combine(output, "文件夹"))).IsTrue();
         await Assert.That(DirectoryUtils.Exists(Path.Combine(output, "空文件夹"))).IsFalse();
-        await Assert.That(File.ReadAllText(PathUtils.WithLongPath(Path.Combine(output, "fabricloader.log")))).Contains("FabricLoader");
-        await Assert.That(File.ReadAllText(PathUtils.WithLongPath(Path.Combine(output, "文件夹", "中文文件.txt")))).Contains("测试内容");
+        await Assert.That(File.ReadAllText(PathUtils.ToExtendedFormat(Path.Combine(output, "fabricloader.log")))).Contains("FabricLoader");
+        await Assert.That(File.ReadAllText(PathUtils.ToExtendedFormat(Path.Combine(output, "文件夹", "中文文件.txt")))).Contains("测试内容");
     }
 
     [Test]
@@ -24,7 +24,7 @@ public class FileUtilsTest : TestWithFolder {
         string output = Path.Combine(tempFolder, "Extracted");
         FileUtils.ExtractToDirectory(GetTestFile(testFile), output, p => progress = p);
         await Assert.That(progress).IsEqualTo(1);
-        await Assert.That(File.ReadAllText(PathUtils.WithLongPath(Path.Combine(output, PathUtils.GetFileNameWithoutExtension(testFile))))).Contains(containsText);
+        await Assert.That(File.ReadAllText(PathUtils.ToExtendedFormat(Path.Combine(output, PathUtils.GetFileNameWithoutExtension(testFile))))).Contains(containsText);
     }
 
     [Test]
