@@ -12,6 +12,15 @@ public static class DirectoryUtils {
     }
 
     /// <summary>
+    /// 在临时文件夹下创建一个随机名称的文件夹，并返回其路径。
+    /// </summary>
+    public static string CreateRandom() {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        DirectoryUtils.Create(tempDir);
+        return tempDir;
+    }
+
+    /// <summary>
     /// 判断文件夹是否存在。
     /// </summary>
     public static bool Exists(string path) 
@@ -54,48 +63,62 @@ public static class DirectoryUtils {
 
     /// <summary>
     /// 复制文件夹。
-    /// 若原文件夹不存在，则不执行。
+    /// 若复制自身到自身，则不执行操作；若仅大小写不同，则重命名此文件夹。
     /// </summary>
-    public static void Copy(string sourceFolder, string destFolder, Action<double>? progressHandler = null) {
-        if (!DirectoryUtils.Exists(sourceFolder)) {
-            Logger.Info($"尝试复制文件夹，但原文件夹不存在，已跳过复制：{sourceFolder} → {destFolder}");
-            progressHandler?.Invoke(1);
-            return;
-        }
+    public static void Copy(string sourceFolder, string destFolder) {
         sourceFolder = PathUtils.ForCompare(sourceFolder);
         destFolder = PathUtils.ForCompare(destFolder);
-        int doneCount = 0;
-        Lazy<int> totalCount = new(() => DirectoryUtils.GetFiles(sourceFolder).Count());
-        Logger.Trace($"复制文件夹：{sourceFolder} → {destFolder}");
-        foreach (var file in DirectoryUtils.GetFiles(sourceFolder)) {
-            FileUtils.Copy(file, file.Replace(sourceFolder, destFolder));
-            doneCount++;
-            if (progressHandler is not null) progressHandler?.Invoke((double) doneCount / totalCount.Value);
+        if (string.Compare(sourceFolder, destFolder, ignoreCase: false) == 0) {
+            // 复制自身到自身，则不执行操作
+            Logger.Trace($"复制文件夹到自身，不执行操作：{sourceFolder} → {destFolder}");
+        } else if (string.Compare(sourceFolder, destFolder, ignoreCase: true) == 0) {
+            // 路径仅大小写不同，等效于重命名
+            Logger.Trace($"复制文件夹到自身，但大小写不同，等效于重命名文件夹：{sourceFolder} → {destFolder}");
+            DirectoryUtils.Move(sourceFolder, destFolder);
+        } else {
+            // 实际的复制
+            Logger.Trace($"复制文件夹：{sourceFolder} → {destFolder}");
+            foreach (var file in DirectoryUtils.GetFiles(sourceFolder)) FileUtils.Copy(file, file.Replace(sourceFolder, destFolder));
         }
     }
 
     /// <summary>
     /// 剪切文件夹。
+    /// 会创建对应文件夹、覆盖已有的文件夹。
     /// </summary>
     public static void Move(string sourceFolder, string destFolder) {
-        if (!DirectoryUtils.Exists(sourceFolder)) return;
-        DirectoryUtils.Delete(destFolder); // Move 要求不存在对应文件夹
-        Logger.Trace($"剪切文件夹：{sourceFolder} → {destFolder}");
-        Directory.Move(PathUtils.ForApi(sourceFolder), PathUtils.ForApi(destFolder));
+        SafetyCheck(sourceFolder);
+        sourceFolder = PathUtils.ForCompare(sourceFolder);
+        destFolder = PathUtils.ForCompare(destFolder);
+        if (string.Compare(sourceFolder, destFolder, ignoreCase: false) == 0) {
+            // 剪切自身到自身，则不执行操作
+            Logger.Trace($"剪切文件夹到自身，不执行操作：{sourceFolder} → {destFolder}");
+        } else if (string.Compare(sourceFolder, destFolder, ignoreCase: true) == 0) {
+            // 路径仅大小写不同
+            Logger.Trace($"剪切文件夹到自身，但大小写不同：{sourceFolder} → {destFolder}");
+            var temp = Path.Combine(PathUtils.RemoveLastPart(sourceFolder), Path.GetRandomFileName());
+            DirectoryUtils.Move(sourceFolder, temp);
+            DirectoryUtils.Move(temp, destFolder);
+        } else if (PathUtils.GetDiskName(sourceFolder) == PathUtils.GetDiskName(destFolder)) {
+            // 同一磁盘剪切，直接调用 Move（这只修改文件夹名，效率更高）
+            Logger.Trace($"剪切文件夹到同一磁盘：{sourceFolder} → {destFolder}");
+            DirectoryUtils.Delete(destFolder); // Move 要求此前不存在对应文件夹
+            Directory.Move(PathUtils.ForApi(sourceFolder), PathUtils.ForApi(destFolder));
+        } else {
+            // 不同磁盘，必须先复制再删除，这就是我们傻逼微软
+            Logger.Trace($"剪切文件夹到不同磁盘：{sourceFolder} → {destFolder}");
+            DirectoryUtils.Copy(sourceFolder, destFolder);
+            DirectoryUtils.Delete(sourceFolder);
+        }
     }
 
     /// <summary>
     /// 删除文件夹。
     /// </summary>
     public static void Delete(string folder, bool toRecycleBin = false) {
-        // 安全检查
         if (!DirectoryUtils.Exists(folder)) return;
         Logger.Trace($"{(toRecycleBin ? "将文件夹删除到回收站" : "删除文件夹")}：{folder}");
-        folder = PathUtils.ForCompare(folder);
-        if (folder == PathUtils.ForCompare(Path.GetPathRoot(folder)))
-            throw new UnauthorizedAccessException($"不应删除磁盘根目录：{folder}");
-        if (criticalFolders.Value.Any(f => f.StartsWithF(folder, ignoreCase: true)))
-            throw new UnauthorizedAccessException($"不应删除的文件夹：{folder}");
+        SafetyCheck(folder);
         // 删除
         if (toRecycleBin) {
             FileUtils.DeleteToRecycleBin(folder); // 删除到回收站
@@ -110,7 +133,7 @@ public static class DirectoryUtils {
                 } catch (DirectoryNotFoundException ex) { // #4549，也可能已被其他线程删除
                     if (DirectoryUtils.Exists(folder)) {
                         Logger.Warn(ex, $"该文件夹可能为孤立的符号链接，尝试直接删除（{folder}）");
-                        Directory.Delete(folder, true);
+                        Directory.Delete(folder);
                     } else {
                         throw;
                     }
@@ -118,11 +141,24 @@ public static class DirectoryUtils {
             }
         }
     }
+
+    /// <summary>
+    /// 进行安全检查：若尝试操作桌面、文档、下载、Windows、当前程序所在文件夹，则抛出异常。
+    /// </summary>
+    /// <exception cref="UnauthorizedAccessException" />
+    private static void SafetyCheck(string folder) {
+        folder = PathUtils.ForCompare(folder);
+        if (folder == PathUtils.ForCompare(Path.GetPathRoot(folder)))
+            throw new UnauthorizedAccessException($"不应操作磁盘根目录：{folder}");
+        if (criticalFolders.Value.Any(f => f.StartsWithF(folder, ignoreCase: true)))
+            throw new UnauthorizedAccessException($"不应操作文件夹：{folder}");
+    }
     private static readonly Lazy<HashSet<string>> criticalFolders = new(() => new(new[] {
         PathUtils.CurrentFolder,
         Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
         Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
         Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        Environment.GetFolderPath(Environment.SpecialFolder.Windows),
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads") // 下载文件夹没有 SpecialFolder 枚举
     }.Select(f => PathUtils.ForCompare(f))));
 

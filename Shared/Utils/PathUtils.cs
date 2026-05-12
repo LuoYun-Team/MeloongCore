@@ -147,6 +147,17 @@ public static class PathUtils {
     }
 
     /// <summary>
+    /// 获取路径的盘符，返回一个大写字母。
+    /// 若路径不包含盘符，则返回 <c>null</c>。
+    /// </summary>
+    public static char? GetDiskName(string? path) {
+        if (string.IsNullOrEmpty(path)) return null;
+        path = PathUtils.WithoutLongPath(path!);
+        if (path.StartsWithF(@"\\") || path.StartsWithF("/")) return null;
+        return char.ToUpper(path[0]);
+    }
+
+    /// <summary>
     /// 统一路径格式，以便比较。
     /// <para/>具体而言：将短路径展开，去除前导的 <c>\\?\</c>，将分隔符改为 \，去除末尾的分隔符。
     /// </summary>

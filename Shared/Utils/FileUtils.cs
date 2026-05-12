@@ -74,8 +74,10 @@ public static class FileUtils {
     public static void Write(string filePath, byte[] content) {
         DirectoryUtils.Create(PathUtils.RemoveLastPart(filePath));
         Logger.Trace($"写入文件：{filePath}（{content.Length} 字节）");
-        ResilientUtils.RetryOn<IOException>(() 
-            => File.WriteAllBytes(PathUtils.ForApi(filePath), content));
+        ResilientUtils.RetryOn<IOException>(() => {
+            FileUtils.Delete(filePath);
+            File.WriteAllBytes(PathUtils.ForApi(filePath), content);
+        });
     }
 
     /// <summary>
@@ -84,10 +86,13 @@ public static class FileUtils {
     /// 若文件已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, Stream stream) {
-        using FileStream fileStream = FileUtils.CreateAsStream(filePath);
-        if (stream.CanSeek && stream.Position != 0) stream.Seek(0, SeekOrigin.Begin);
-        Logger.Trace($"写入文件：{filePath}（{stream.GetType().Name}{(stream.CanSeek ? $" {stream.Length} 字节" : "")}）");
-        stream.CopyTo(fileStream);
+        ResilientUtils.RetryOn<IOException>(() => {
+            FileUtils.Delete(filePath);
+            using FileStream fileStream = FileUtils.CreateAsStream(filePath);
+            if (stream.CanSeek && stream.Position != 0) stream.Seek(0, SeekOrigin.Begin);
+            Logger.Trace($"写入文件：{filePath}（{stream.GetType().Name}{(stream.CanSeek ? $" {stream.Length} 字节" : "")}）");
+            stream.CopyTo(fileStream);
+        });
     }
     /// <summary>
     /// 创建文件，并打开 <see cref="FileStream"/>。
@@ -96,9 +101,17 @@ public static class FileUtils {
     public static FileStream CreateAsStream(string filePath) {
         DirectoryUtils.Create(PathUtils.RemoveLastPart(filePath));
         Logger.Trace($"创建文件流：{filePath}");
-        return ResilientUtils.RetryOn<IOException, FileStream>(()
-            => new FileStream(PathUtils.ForApi(filePath), FileMode.Create));
+        return ResilientUtils.RetryOn<IOException, FileStream>(() => {
+            FileUtils.Delete(filePath);
+            return new FileStream(PathUtils.ForApi(filePath), FileMode.Create);
+        });
     }
+
+    /// <summary>
+    /// 在临时文件夹下创建一个随机名称的文件，并返回其路径。
+    /// </summary>
+    public static string CreateRandom()
+        => ResilientUtils.RetryOn<IOException, string>(Path.GetTempFileName);
 
     #endregion
 
@@ -107,18 +120,25 @@ public static class FileUtils {
     /// <summary>
     /// 复制文件。
     /// 会创建对应文件夹、覆盖已有的文件。
-    /// 若原文件不存在，则不执行。
+    /// 若复制自身到自身，则不执行操作；若仅大小写不同，则重命名此文件。
     /// </summary>
     public static void Copy(string sourceFilePath, string destFilePath) {
-        if (sourceFilePath == destFilePath) return; // 如果复制同一个文件则跳过
-        if (!FileUtils.Exists(sourceFilePath)) {
-            Logger.Info($"尝试复制文件，但原文件不存在，已跳过复制：{sourceFilePath} → {destFilePath}");
-            return;
+        sourceFilePath = PathUtils.ForCompare(sourceFilePath);
+        destFilePath = PathUtils.ForCompare(destFilePath);
+        if (string.Compare(sourceFilePath, destFilePath, ignoreCase:false) == 0) {
+            // 复制自身到自身，则不执行操作
+            Logger.Trace($"复制文件到自身，不执行操作：{sourceFilePath} → {destFilePath}");
+        } else if (string.Compare(sourceFilePath, destFilePath, ignoreCase:true) == 0) {
+            // 路径仅大小写不同，等效于重命名
+            Logger.Trace($"复制文件到自身，但大小写不同，等效于重命名文件：{sourceFilePath} → {destFilePath}");
+            FileUtils.Move(sourceFilePath, destFilePath);
+        } else {
+            // 实际的复制
+            DirectoryUtils.Create(PathUtils.RemoveLastPart(destFilePath));
+            Logger.Trace($"复制文件：{sourceFilePath} → {destFilePath}");
+            ResilientUtils.RetryOn<IOException>(() 
+                => File.Copy(PathUtils.ForApi(sourceFilePath), PathUtils.ForApi(destFilePath), true));
         }
-        DirectoryUtils.Create(PathUtils.RemoveLastPart(destFilePath));
-        Logger.Trace($"复制文件：{sourceFilePath} → {destFilePath}");
-        ResilientUtils.RetryOn<IOException>(()
-            => File.Copy(PathUtils.ForApi(sourceFilePath), PathUtils.ForApi(destFilePath), true));
     }
 
     /// <summary>
@@ -126,12 +146,27 @@ public static class FileUtils {
     /// 会创建对应文件夹、覆盖已有的文件。
     /// </summary>
     public static void Move(string sourceFilePath, string destFilePath) {
-        if (sourceFilePath == destFilePath) return; // 如果移动同一个文件则跳过
-        DirectoryUtils.Create(PathUtils.RemoveLastPart(destFilePath));
-        FileUtils.Delete(destFilePath);
-        Logger.Trace($"剪切文件：{sourceFilePath} → {destFilePath}");
-        ResilientUtils.RetryOn<IOException>(()
-            => File.Move(PathUtils.ForApi(sourceFilePath), PathUtils.ForApi(destFilePath)));
+        sourceFilePath = PathUtils.ForCompare(sourceFilePath);
+        destFilePath = PathUtils.ForCompare(destFilePath);
+        if (string.Compare(sourceFilePath, destFilePath, ignoreCase: false) == 0) {
+            // 剪切自身到自身，则不执行操作
+            Logger.Trace($"剪切文件到自身，不执行操作：{sourceFilePath} → {destFilePath}");
+        } else if (string.Compare(sourceFilePath, destFilePath, ignoreCase: true) == 0) {
+            // 路径仅大小写不同
+            Logger.Trace($"剪切文件到自身，但大小写不同：{sourceFilePath} → {destFilePath}");
+            ResilientUtils.RetryOn<IOException>(() => {
+                var temp = Path.Combine(PathUtils.RemoveLastPart(sourceFilePath), Path.GetRandomFileName());
+                File.Move(PathUtils.ForApi(sourceFilePath), PathUtils.ForApi(temp));
+                File.Move(PathUtils.ForApi(temp), PathUtils.ForApi(destFilePath));
+            });
+        } else {
+            // 实际的剪切
+            DirectoryUtils.Create(PathUtils.RemoveLastPart(destFilePath));
+            FileUtils.Delete(destFilePath);
+            Logger.Trace($"剪切文件：{sourceFilePath} → {destFilePath}");
+            ResilientUtils.RetryOn<IOException>(()
+                => File.Move(PathUtils.ForApi(sourceFilePath), PathUtils.ForApi(destFilePath)));
+        }
     }
 
     #endregion
