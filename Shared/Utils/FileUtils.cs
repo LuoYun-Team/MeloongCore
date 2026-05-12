@@ -9,13 +9,13 @@ public static class FileUtils {
     /// 打开指定文件的只读 <see cref="FileStream"/>。
     /// </summary>
     public static FileStream ReadAsStream(string filePath)
-        => new(PathUtils.WithLongPath(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        => new(PathUtils.ForApi(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
     /// <summary>
     /// 读取文件中的所有内容。
     /// </summary>
     public static byte[] ReadAsBytes(string filePath) {
-        using Stream fs = ReadAsStream(filePath); // 不能使用 File.ReadAllBytes，它不指定 FileShare.ReadWrite，会在文件被占用时抛出异常
+        using Stream fs = FileUtils.ReadAsStream(filePath); // 不能使用 File.ReadAllBytes，它不指定 FileShare.ReadWrite，会在文件被占用时抛出异常
         using MemoryStream ms = new();
         fs.CopyTo(ms);
         return ms.ToArray();
@@ -75,7 +75,7 @@ public static class FileUtils {
         DirectoryUtils.Create(PathUtils.RemoveLastPart(filePath));
         Logger.Trace($"写入文件：{filePath}（{content.Length} 字节）");
         ResilientUtils.RetryOn<IOException>(() 
-            => File.WriteAllBytes(PathUtils.WithLongPath(filePath), content));
+            => File.WriteAllBytes(PathUtils.ForApi(filePath), content));
     }
 
     /// <summary>
@@ -97,7 +97,7 @@ public static class FileUtils {
         DirectoryUtils.Create(PathUtils.RemoveLastPart(filePath));
         Logger.Trace($"创建文件流：{filePath}");
         return ResilientUtils.RetryOn<IOException, FileStream>(()
-            => new FileStream(PathUtils.WithLongPath(filePath), FileMode.Create));
+            => new FileStream(PathUtils.ForApi(filePath), FileMode.Create));
     }
 
     #endregion
@@ -118,7 +118,7 @@ public static class FileUtils {
         DirectoryUtils.Create(PathUtils.RemoveLastPart(destFilePath));
         Logger.Trace($"复制文件：{sourceFilePath} → {destFilePath}");
         ResilientUtils.RetryOn<IOException>(()
-            => File.Copy(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath), true));
+            => File.Copy(PathUtils.ForApi(sourceFilePath), PathUtils.ForApi(destFilePath), true));
     }
 
     /// <summary>
@@ -131,7 +131,7 @@ public static class FileUtils {
         FileUtils.Delete(destFilePath);
         Logger.Trace($"剪切文件：{sourceFilePath} → {destFilePath}");
         ResilientUtils.RetryOn<IOException>(()
-            => File.Move(PathUtils.WithLongPath(sourceFilePath), PathUtils.WithLongPath(destFilePath)));
+            => File.Move(PathUtils.ForApi(sourceFilePath), PathUtils.ForApi(destFilePath)));
     }
 
     #endregion
@@ -148,7 +148,7 @@ public static class FileUtils {
             DeleteToRecycleBin(filePath);
         } else {
             ResilientUtils.RetryOn<IOException>(()
-                => File.Delete(PathUtils.WithLongPath(filePath)));
+                => File.Delete(PathUtils.ForApi(filePath)));
         }
     }
 
@@ -234,7 +234,7 @@ public static class FileUtils {
     public static ZipArchive OpenZip(string zipFilePath) {
         ZipArchive TryOpen(Encoding encoding) {
             Logger.Trace($"尝试以 {encoding.EncodingName} 编码打开压缩包：{zipFilePath}");
-            var result = ZipFile.Open(PathUtils.WithLongPath(zipFilePath), ZipArchiveMode.Read, encoding);
+            var result = ZipFile.Open(PathUtils.ForApi(zipFilePath), ZipArchiveMode.Read, encoding);
             try {
                 _ = result.Entries; // 如果编码有误，会在这里抛出 DecoderFallbackException；如果文件异常，会在这里抛出 InvalidDataException
                 return result;
@@ -260,7 +260,7 @@ public static class FileUtils {
     /// </summary>
     /// <param name="progressHandler">参数为已完成的总比例（0~1）。</param>
     public static void ExtractToDirectory(string compressionFile, string outputDirectory, Action<double>? progressHandler = null) {
-        compressionFile = PathUtils.WithLongPath(compressionFile);
+        compressionFile = PathUtils.ForApi(compressionFile);
         DirectoryUtils.Create(outputDirectory);
         // 解压 gz（gz 不需要考虑编码）
         if (compressionFile.EndsWithF(".gz", true)) {
@@ -282,8 +282,8 @@ public static class FileUtils {
             if (totalCount > 0) progressHandler?.Invoke((double) doneCount / totalCount);
             if (string.IsNullOrEmpty(entry.Name)) continue; // 跳过文件夹条目（ZipArchive 会将文件夹也作为一个 entry，但它们的 Name 为空）
             // ZipSlip 修复
-            string outputFilePath = PathUtils.WithLongPath(Path.GetFullPath(Path.Combine(outputDirectory, entry.FullName)));
-            if (!outputFilePath.StartsWithF(PathUtils.WithSeparator(PathUtils.WithLongPath(Path.GetFullPath(outputDirectory))), ignoreCase:true))
+            string outputFilePath = PathUtils.ForCompare(Path.Combine(outputDirectory, entry.FullName));
+            if (!outputFilePath.StartsWithF(PathUtils.WithSeparator(PathUtils.ForCompare(outputDirectory)), ignoreCase:true))
                 throw new ZipSlipException($"Zip 文件项 {entry.FullName} 的路径在压缩包之外，这可能导致安全问题");
             // 实际的解压
             using var entryStream = entry.Open();
@@ -297,13 +297,11 @@ public static class FileUtils {
     /// 会自动创建文件夹。会覆盖已有文件。
     /// </summary>
     public static void CreateZipFromDirectory(string outputFullPath, string sourceDirectory) {
-        outputFullPath = PathUtils.WithLongPath(outputFullPath);
-        sourceDirectory = PathUtils.WithLongPath(sourceDirectory);
         DirectoryUtils.Create(PathUtils.RemoveLastPart(outputFullPath));
         FileUtils.Delete(outputFullPath);
         Logger.Trace($"将文件夹中的内容压缩为 zip 文件：{sourceDirectory} → {outputFullPath}");
         ResilientUtils.RetryOn<IOException>(()
-            => ZipFile.CreateFromDirectory(sourceDirectory, outputFullPath));
+            => ZipFile.CreateFromDirectory(PathUtils.ForApi(sourceDirectory), PathUtils.ForApi(outputFullPath)));
     }
 
     /// <summary>
@@ -317,7 +315,7 @@ public static class FileUtils {
             if (sources.ContainsKey(fileName)) throw new ArgumentException($"尝试将多个同文件名的文件放进压缩包中（{fileName}）", nameof(sourceFiles));
             sources.Add(fileName, source);
         }
-        CreateZipFromFiles(outputFullPath, sources);
+        FileUtils.CreateZipFromFiles(outputFullPath, sources);
     }
 
     /// <summary>
@@ -326,13 +324,12 @@ public static class FileUtils {
     /// </summary>
     /// <param name="sources">键为 zip 文件下的路径，值为文件的本地路径。</param>
     public static void CreateZipFromFiles(string outputFullPath, IDictionary<string, string> sources) {
-        outputFullPath = PathUtils.WithLongPath(outputFullPath);
         DirectoryUtils.Create(PathUtils.RemoveLastPart(outputFullPath));
         FileUtils.Delete(outputFullPath);
         using var archive = ResilientUtils.RetryOn<IOException, ZipArchive>(()
-            => ZipFile.Open(outputFullPath, ZipArchiveMode.Create));
+            => ZipFile.Open(PathUtils.ForApi(outputFullPath), ZipArchiveMode.Create));
         Logger.Trace($"创建 zip 文件：{sources.Count} 个文件 → {outputFullPath}\n{sources.Select(p => $"- {p.Value} → {p.Key}").Join('\n')}");
-        foreach (var pair in sources) archive.CreateEntryFromFile(PathUtils.WithLongPath(pair.Value), pair.Key.Replace('\\', '/'), CompressionLevel.Optimal);
+        foreach (var pair in sources) archive.CreateEntryFromFile(PathUtils.ForApi(pair.Value), pair.Key.Replace('\\', '/'), CompressionLevel.Optimal);
     }
 
     #endregion
@@ -341,12 +338,12 @@ public static class FileUtils {
     /// 确定指定的文件是否存在。
     /// </summary>
     public static bool Exists(string filePath) 
-        => File.Exists(PathUtils.WithLongPath(filePath));
+        => File.Exists(PathUtils.ForApi(filePath));
 
     /// <summary>
     /// 获取 <see cref="FileInfo"/> 对象。
     /// </summary>
     public static FileInfo GetInfo(string path) 
-        => new(PathUtils.WithLongPath(path));
+        => new(PathUtils.ForApi(path));
 
 }

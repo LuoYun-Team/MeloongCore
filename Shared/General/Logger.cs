@@ -314,7 +314,7 @@ public class FileLogger : BaseLogger, IDisposable {
             Logger.Warn(ex, "整理日志文件失败");
         }
         // 新建 writer
-        writer = new StreamWriter(PathUtils.WithLongPath(Path.Combine(logFolder, $"{fileNamePrefix}1{fileNameSuffix}")), append: true) { AutoFlush = true };
+        writer = new StreamWriter(PathUtils.ForApi(Path.Combine(logFolder, $"{fileNamePrefix}1{fileNameSuffix}")), append: true) { AutoFlush = true };
     }
 
     /// <inheritdoc/>

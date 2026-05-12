@@ -20,7 +20,7 @@ public static class MsDelta {
         // fileTypeSet：https://learn.microsoft.com/en-us/previous-versions/bb417345(v=msdn.10)?redirectedfrom=MSDN#file-type-sets (15L: DELTA_FILE_TYPE_SET_EXECUTABLES)
         // 131072L: IgnoreFileSizeLimit, 32u: Crc32
         if (!CreateDelta(15L, 131072L, 0L, 
-            PathUtils.WithLongPath(oldFilePath), PathUtils.WithLongPath(newFilePath), null, null, new DeltaInput(), IntPtr.Zero, 32u, PathUtils.WithLongPath(deltaFilePath)))
+            PathUtils.ForApi(oldFilePath), PathUtils.ForApi(newFilePath), null, null, new DeltaInput(), IntPtr.Zero, 32u, PathUtils.ForApi(deltaFilePath)))
             throw new Win32Exception();
     }
 
@@ -35,7 +35,7 @@ public static class MsDelta {
         DirectoryUtils.Create(PathUtils.RemoveLastPart(newFilePath));
         Logger.Info($"正在应用补丁：原始文件 {oldFilePath} + 补丁文件 {deltaFilePath} → 输出至 {newFilePath}");
         // 1L: AllowLegacy
-        if (!ApplyDelta(1L, PathUtils.WithLongPath(oldFilePath), PathUtils.WithLongPath(deltaFilePath), PathUtils.WithLongPath(newFilePath)))
+        if (!ApplyDelta(1L, PathUtils.ForApi(oldFilePath), PathUtils.ForApi(deltaFilePath), PathUtils.ForApi(newFilePath)))
             throw new Win32Exception();
     }
 

@@ -21,12 +21,12 @@ public static class PathUtils {
 
     /// <summary>
     /// 若路径较长，则尽量将其转换为短路径。
-    /// 若输入的是文件夹路径，不保证其结尾是否有文件夹分隔符。
+    /// <para/>结果的开头不含 <c>\\?\</c>、结尾不含分隔符。
     /// </summary>
     public static string ToShortPath(string fullName, bool keepFileName = false) {
         if (string.IsNullOrEmpty(fullName)) return fullName;
+        fullName = PathUtils.ForCompare(fullName);
         if (!fullName.Contains(":")) return fullName;
-        fullName = PathUtils.Normalize(fullName, false);
         if (fullName.Length <= 200) return fullName;
 
         // 保留文件名
@@ -49,10 +49,10 @@ public static class PathUtils {
 
         // 缩短路径
         char[] buffer = new char[260];
-        int result = GetShortPathNameW(PathUtils.WithLongPath(pathToShorten), buffer, buffer.Length);
+        int result = GetShortPathNameW(PathUtils.ForApi(pathToShorten), buffer, buffer.Length);
         if (result == 0) return fullName;
         string shortPath = new(buffer, 0, result);
-        return PathUtils.WithoutLongPath(Path.Combine(shortPath, pathToKeep));
+        return PathUtils.WithoutSeparator(PathUtils.WithoutLongPath(Path.Combine(shortPath, pathToKeep)));
     }
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetShortPathNameW(string lpszLongPath, [Out] char[] buffer, int cchBuffer);
@@ -147,11 +147,21 @@ public static class PathUtils {
     }
 
     /// <summary>
-    /// 将路径转换为标准格式：将短路径展开，将分隔符改为 \，去除前导的 <c>\\?\</c>，统一末尾是否包含分隔符。
+    /// 统一路径格式，以便比较。
+    /// <para/>具体而言：将短路径展开，去除前导的 <c>\\?\</c>，将分隔符改为 \，去除末尾的分隔符。
     /// </summary>
-    public static string Normalize(string path, bool withSeparator) {
-        path = PathUtils.WithoutLongPath(Path.GetFullPath(path)).Replace("/", @"\");
-        return withSeparator ? PathUtils.WithSeparator(path) : PathUtils.WithoutSeparator(path);
+    public static string ForCompare(string path) 
+        => PathUtils.WithoutSeparator(PathUtils.WithoutLongPath(Path.GetFullPath(path)).Replace("/", @"\"));
+
+    /// <summary>
+    /// 将路径转换为兼容各种 Windows API 的格式。
+    /// <para/>具体而言：将分隔符改为 \。添加前导的 <c>\\?\</c>。若为驱动器则添加末尾分隔符，否则去除分隔符。
+    /// </summary>
+    public static string ForApi(string path) {
+        path = PathUtils.WithLongPath(path);
+        if (path.EndsWithF(":")) path += @"\"; // 驱动器路径必须保留末尾的分隔符
+        if (path.EndsWithF(@":\")) return path;
+        return PathUtils.WithoutSeparator(path);
     }
 
     #endregion
