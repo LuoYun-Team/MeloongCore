@@ -49,10 +49,10 @@ public static class PathUtils {
 
         // 缩短路径
         char[] buffer = new char[260];
-        int result = GetShortPathNameW(pathToShorten, buffer, buffer.Length);
+        int result = GetShortPathNameW(PathUtils.WithLongPath(pathToShorten), buffer, buffer.Length);
         if (result == 0) return fullName;
         string shortPath = new(buffer, 0, result);
-        return Path.Combine(shortPath, pathToKeep);
+        return PathUtils.WithoutLongPath(Path.Combine(shortPath, pathToKeep));
     }
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetShortPathNameW(string lpszLongPath, [Out] char[] buffer, int cchBuffer);
