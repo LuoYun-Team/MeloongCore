@@ -15,6 +15,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Ookii.Dialogs.Wpf" Version="5.0.1" />
 		<PackageReference Include="PolySharp" Version="1.15.0">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -38,6 +39,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<Reference Include="System.Windows.Forms" />
 		<Reference Include="PresentationCore" />
 		<Reference Include="PresentationFramework" />
 	</ItemGroup>
