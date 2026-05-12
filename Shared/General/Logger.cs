@@ -98,7 +98,7 @@ public static class Logger {
     // C#：仅当实际需要输出日志时，才格式化内插字符串，以优化性能
 
     public static void Log(LogLevel level, [InterpolatedStringHandlerArgument("level")] ref LogInterpolatedStringHandler handler, LogBehavior behavior = LogBehavior.None, [CallerFilePath] string filePath = "") {
-        if (handler.IsEnabled) Instance.Log(null, handler.ToStringAndClear(), level, behavior, filePath);
+        if (handler.isEnabled) Instance.Log(null, handler.ToStringAndClear(), level, behavior, filePath);
     }
     public static void Trace(ref LogInterpolatedStringHandler<TraceLogLevel> handler, LogBehavior behavior = LogBehavior.None, [CallerFilePath] string filePath = "") {
         if (handler.IsEnabled) Instance.Log(null, handler.ToStringAndClear(), LogLevel.Trace, behavior, filePath);
@@ -116,10 +116,10 @@ public static class Logger {
     [InterpolatedStringHandler]
     public ref struct LogInterpolatedStringHandler {
         private StringBuilder? _sb;
-        public readonly bool IsEnabled;
+        public readonly bool isEnabled;
         public LogInterpolatedStringHandler(int literalLength, int formattedCount, LogLevel level, out bool isEnabled) {
-            IsEnabled = isEnabled = Logger.Instance.MinLevel <= level;
-            _sb = IsEnabled ? new StringBuilder(literalLength) : null;
+            this.isEnabled = isEnabled = Logger.Instance.MinLevel <= level;
+            _sb = this.isEnabled ? new StringBuilder(literalLength) : null;
         }
         public void AppendLiteral(string value) => _sb?.Append(value);
         public void AppendFormatted<T>(T value) => _sb?.Append(value?.ToString());
@@ -150,7 +150,7 @@ public static class Logger {
     [InterpolatedStringHandler]
     public ref struct LogInterpolatedStringHandler<TLevel> where TLevel : struct, ILogLevelProvider {
         private LogInterpolatedStringHandler _inner;
-        public bool IsEnabled => _inner.IsEnabled;
+        public bool IsEnabled => _inner.isEnabled;
         public LogInterpolatedStringHandler(int literalLength, int formattedCount, out bool isEnabled) => _inner = new(literalLength, formattedCount, default(TLevel).Level, out isEnabled);
         public void AppendLiteral(string value) => _inner.AppendLiteral(value);
         public void AppendFormatted<T>(T value) => _inner.AppendFormatted(value);

@@ -21,12 +21,12 @@ public static class PathUtils {
 
     /// <summary>
     /// 若路径较长，则尽量将其转换为短路径。
-    /// <para/>结果的开头不含 <c>\\?\</c>、结尾不含分隔符。
+    /// <para/>结果的开头不含 <c>\\?\</c>，结尾不含分隔符。
     /// </summary>
     public static string ToShortPath(string fullName, bool keepFileName = false) {
         if (string.IsNullOrEmpty(fullName)) return fullName;
-        fullName = PathUtils.ForCompare(fullName);
         if (!fullName.Contains(":")) return fullName;
+        fullName = PathUtils.ForCompare(fullName);
         if (fullName.Length <= 200) return fullName;
         // 保留文件名
         string pathToKeep = "";

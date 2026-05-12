@@ -16,6 +16,7 @@ public static class HashUtils {
             HashMethod.Sha512 => SHA512.Create(),
             _ => throw new ArgumentOutOfRangeException(nameof(method))
         };
+        Logger.Trace($"计算文件 {method}：{filePath}");
         return BitConverter.ToString(hashImpl.ComputeHash(file)).Replace("-", "").ToLower();
     }
 
