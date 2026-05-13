@@ -25,9 +25,9 @@ public static class PathUtils {
     /// </summary>
     public static string ToShortPath(string fullName, bool keepFileName = false) {
         if (string.IsNullOrEmpty(fullName)) return fullName;
-        if (!fullName.Contains(":") || fullName.Contains("://")) return fullName;
-        fullName = PathUtils.ForCompare(fullName);
+        if (!fullName.Contains(@":\")) return fullName;
         if (fullName.Length <= 200) return fullName;
+        fullName = PathUtils.ForCompare(fullName);
         // 保留文件名
         string pathToKeep = "";
         string pathToShorten = fullName;
