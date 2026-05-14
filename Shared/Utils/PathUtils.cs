@@ -94,10 +94,8 @@ public static class PathUtils {
     public static string RemoveLastPart(string path) {
         if (path!.Contains("://")) { // 网络路径
             path = PathUtils.RemoveSlashSuffix(path.BeforeFirst("#").BeforeFirst("?")); // 去除参数
-            return PathUtils.RemoveSlashSuffix(path).BeforeLast("/");
-        } else { // 文件路径
-            return PathUtils.RemoveSlashSuffix(path!).BeforeLast("\\");
         }
+        return PathUtils.RemoveSlashSuffix(path!).BeforeLastOfAny([@"\", "/"]);
     }
 
     /// <summary>
@@ -111,10 +109,10 @@ public static class PathUtils {
     public static string GetLastPart(string path) {
         if (path!.Contains("://")) { // 网络路径
             path = PathUtils.RemoveSlashSuffix(path.BeforeFirst("#").BeforeFirst("?")); // 去除参数
-            return path.AfterLast("/");
         } else { // 文件路径
-            return PathUtils.RemoveSlashSuffix(path).AfterLast("\\");
+            path = PathUtils.RemoveSlashSuffix(path);
         }
+        return path.AfterLastOfAny([@"\", "/"]);
     }
 
     /// <summary>

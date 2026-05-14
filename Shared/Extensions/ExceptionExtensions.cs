@@ -42,11 +42,11 @@ public static class ExceptionExtensions {
         foreach (var currentEx in ex.Flatten()) {
             if (showMultilineStacks) {
                 lines.Add((isInnerException ? "→ " : "") + currentEx.Message.ReplaceLineEndings("\r\n", true));
-                if (currentEx.GetType() != typeof(Exception)) lines.Add("   错误类型：" + currentEx.GetType().FullName);
                 var stackLines = (currentEx.StackTrace?.SplitLines(true) ?? [])
                     .Select(l => l.BeforeLast("(") + l.AfterLast(")"))
                     .Distinct();
                 lines.AddRange(stackLines);
+                if (currentEx.GetType() != typeof(Exception)) lines.Add("   错误类型：" + currentEx.GetType().FullName);
             } else {
                 lines.Add(currentEx.Message.ReplaceLineEndings(" ", true));
             }

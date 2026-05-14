@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace MeloongCore.Extensions;
 public static class StringExtensions {
@@ -79,7 +80,7 @@ public static class StringExtensions {
 
     #endregion
 
-    #region 分割与裁切
+    #region Split
 
     /// <summary>
     /// 分割字符串。
@@ -112,6 +113,16 @@ public static class StringExtensions {
         => fullStr.Split(splitChars, removeEmptyEntries ? StringSplitOptions.RemoveEmptyEntries : StringSplitOptions.None);
 
     /// <summary>
+    /// 将字符串分割为多行。
+    /// </summary>
+    public static string[] SplitLines(this string input, bool skipEmptyLines = false)
+        => input.ReplaceLineEndings("\n").Split('\n', skipEmptyLines);
+
+    #endregion
+
+    #region 裁切
+
+    /// <summary>
     /// 获取在子字符串第一次出现之前的部分，如果未找到子字符串则不裁切。
     /// <code>"2024/11/08".BeforeFirst("/") => "2024"</code>
     /// </summary>
@@ -121,11 +132,42 @@ public static class StringExtensions {
         return str.Substring(0, pos);
     }
     /// <summary>
+    /// 获取在任意子字符串第一次出现之前的部分，如果未找到任意子字符串则不裁切。
+    /// <code>"2024/11-08".BeforeFirstOfAny(["/", "-"]) => "2024"</code>
+    /// </summary>
+    public static string BeforeFirstOfAny(this string str, IEnumerable<string> texts, bool ignoreCase = false) {
+        if (texts == null) return str;
+        int pos = -1;
+        foreach (string text in texts) {
+            if (string.IsNullOrEmpty(text)) continue;
+            int p = str.IndexOfF(text, ignoreCase);
+            if (p >= 0 && (pos < 0 || pos > p)) pos = p;
+        }
+        if (pos < 0) return str;
+        return str.Substring(0, pos);
+    }
+
+    /// <summary>
     /// 获取在子字符串最后一次出现之前的部分，如果未找到子字符串则不裁切。
     /// <code>"2024/11/08".BeforeLast("/") => "2024/11"</code>
     /// </summary>
     public static string BeforeLast(this string str, string text, bool ignoreCase = false) {
         int pos = string.IsNullOrEmpty(text) ? -1 : str.LastIndexOfF(text, ignoreCase);
+        if (pos < 0) return str;
+        return str.Substring(0, pos);
+    }
+    /// <summary>
+    /// 获取在任意子字符串最后一次出现之前的部分，如果未找到任意子字符串则不裁切。
+    /// <code>"2024/11-08".BeforeLastOfAny(["/", "-"]) => "2024/11"</code>
+    /// </summary>
+    public static string BeforeLastOfAny(this string str, IEnumerable<string> texts, bool ignoreCase = false) {
+        if (texts == null) return str;
+        int pos = -1;
+        foreach (string text in texts) {
+            if (string.IsNullOrEmpty(text)) continue;
+            int p = str.LastIndexOfF(text, ignoreCase);
+            if (p >= 0 && (pos < 0 || pos < p)) pos = p;
+        }
         if (pos < 0) return str;
         return str.Substring(0, pos);
     }
@@ -140,6 +182,26 @@ public static class StringExtensions {
         return str.Substring(pos + text!.Length);
     }
     /// <summary>
+    /// 获取在任意子字符串第一次出现之后的部分，如果未找到任意子字符串则不裁切。
+    /// <code>"2024/11-08".AfterFirstOfAny(["/", "-"]) => "11-08"</code>
+    /// </summary>
+    public static string AfterFirstOfAny(this string str, IEnumerable<string> texts, bool ignoreCase = false) {
+        if (texts == null) return str;
+        int pos = -1;
+        int len = 0;
+        foreach (string text in texts) {
+            if (string.IsNullOrEmpty(text)) continue;
+            int p = str.IndexOfF(text, ignoreCase);
+            if (p >= 0 && (pos < 0 || pos > p)) {
+                pos = p;
+                len = text.Length;
+            }
+        }
+        if (pos < 0) return str;
+        return str.Substring(pos + len);
+    }
+
+    /// <summary>
     /// 获取在子字符串最后一次出现之后的部分，如果未找到子字符串则不裁切。
     /// <code>"2024/11/08".AfterLast("/") => "08"</code>
     /// </summary>
@@ -147,6 +209,25 @@ public static class StringExtensions {
         int pos = string.IsNullOrEmpty(text) ? -1 : str.LastIndexOfF(text, ignoreCase);
         if (pos < 0) return str;
         return str.Substring(pos + text!.Length);
+    }
+    /// <summary>
+    /// 获取在任意子字符串最后一次出现之后的部分，如果未找到任意子字符串则不裁切。
+    /// <code>"2024/11-08".AfterLastOfAny(["/", "-"]) => "08"</code>
+    /// </summary>
+    public static string AfterLastOfAny(this string str, IEnumerable<string> texts, bool ignoreCase = false) {
+        if (texts == null) return str;
+        int pos = -1;
+        int len = 0;
+        foreach (string text in texts) {
+            if (string.IsNullOrEmpty(text)) continue;
+            int p = str.LastIndexOfF(text, ignoreCase);
+            if (p >= 0 && (pos < 0 || pos < p)) {
+                pos = p;
+                len = text.Length;
+            }
+        }
+        if (pos < 0) return str;
+        return str.Substring(pos + len);
     }
 
     /// <summary>
@@ -191,12 +272,6 @@ public static class StringExtensions {
         => (mergeMultiple ? regexLineEndingAndMerge : regexLineEnding).Replace(input, newValue.Replace("$", "$$")); // 避免识别成捕获组
     private static readonly Regex regexLineEndingAndMerge = new(@"(?:\r\n|[\n\r\f\u0085\u2028\u2029])+", RegexOptions.Compiled);
     private static readonly Regex regexLineEnding = new(@"\r\n|[\n\r\f\u0085\u2028\u2029]", RegexOptions.Compiled);
-
-    /// <summary>
-    /// 将字符串分割为多行。
-    /// </summary>
-    public static string[] SplitLines(this string input, bool skipEmptyLines = false) 
-        => input.ReplaceLineEndings("\n").Split('\n', skipEmptyLines);
 
     #endregion
 
