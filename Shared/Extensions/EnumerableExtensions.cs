@@ -1,10 +1,9 @@
 ﻿using System.Collections.Concurrent;
-using System.Globalization;
 
 namespace MeloongCore.Extensions;
 public static class EnumerableExtensions {
 
-    #region Distinct
+    #region 去重
 
     /// <summary>
     /// 通过比较器进行去重。
@@ -38,7 +37,7 @@ public static class EnumerableExtensions {
 
     #endregion
 
-    #region MinBy / MaxBy
+    #region 最大 / 最小
 
     /// <summary>
     /// 选择所有最大值对应的对象。
@@ -128,6 +127,22 @@ public static class EnumerableExtensions {
 
     #endregion
 
+    #region 排序
+
+    /// <summary>
+    /// 使用默认比较器对集合进行排序。顺序为从小到大。
+    /// </summary>
+    public static IEnumerable<T> Ordered<T>(this IEnumerable<T> source) where T : IComparable<T> 
+        => source.OrderBy(x => x);
+
+    /// <summary>
+    /// 使用默认比较器对集合进行排序。顺序为从大到小。
+    /// </summary>
+    public static IEnumerable<T> OrderedDescending<T>(this IEnumerable<T> source) where T : IComparable<T> 
+        => source.OrderByDescending(x => x);
+
+    #endregion
+
     #region Join
 
     /// <summary>
@@ -187,7 +202,7 @@ public static class EnumerableExtensions {
     /// <summary>
     /// 尝试从字典中获取某项，如果该项不存在，则返回默认值。
     /// </summary>
-    public static TValue? GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> dict, TKey key, TValue defaultValue = default) 
+    public static TValue? GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> dict, TKey key, TValue? defaultValue = default) 
         => dict.TryGetValue(key, out var result) ? result : defaultValue;
 
     /// <summary>
@@ -210,19 +225,30 @@ public static class EnumerableExtensions {
     /// <remarks>
     /// 会跳过：0、非 2 的幂的值、不在枚举值中的数、组合值、对应同一个枚举项的多个别名。
     /// </remarks>
-    public static IEnumerable<T> Flags<T>(this T value) where T : struct, Enum {
-        foreach (var element in Enum.GetValues(typeof(T)).Cast<T>().Distinct()) {
-            var number = Convert.ToInt64(element, CultureInfo.InvariantCulture);
-            if (number == 0 || (number & (number - 1)) != 0) continue; // 跳过 0 和非 2 的幂的值
-            if (value.HasFlag(element)) yield return element;
-        }
+    public static IEnumerable<T> Flags<T>(this T value) where T : struct, Enum
+        => EnumUtils.GetAllFlags<T>().Where(element => value.HasFlag(element));
+
+    /// <summary>
+    /// 从集合中移除满足条件的元素。
+    /// </summary>
+    public static void RemoveIf<T>(this ICollection<T> source, Func<T, bool> predicate) {
+        var itemsToRemove = source.Where(predicate).ToList();
+        foreach (var item in itemsToRemove) source.Remove(item);
+    }
+
+    /// <summary>
+    /// 仅保留满足条件的元素，移除不满足条件的元素。
+    /// </summary>
+    public static void KeepIf<T>(this ICollection<T> source, Func<T, bool> predicate) {
+        var itemsToRemove = source.Where(item => !predicate(item)).ToList();
+        foreach (var item in itemsToRemove) source.Remove(item);
     }
 
     /// <summary>
     /// 判断集合是否有且仅有一个元素。
     /// 在输入 null 时返回 false。
     /// </summary>
-    public static bool IsSingle<T>([AllowNull] this IEnumerable<T> source) {
+    public static bool IsSingle<T>(this IEnumerable<T>? source) {
         if (source is null) return false;
         if (source is IList<T> list) return list.Count == 1;
         using var enumerator = source.GetEnumerator();
