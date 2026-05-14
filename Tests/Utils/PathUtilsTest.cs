@@ -32,6 +32,7 @@ public class PathUtilsTests : TestBase {
     [Arguments("https://foo.bar/file/", "file")]
     [Arguments("https://foo.bar/file/?arg=1", "file")]
     [Arguments("https://foo.bar/File?arg=1", "File")]
+    [Arguments("https://cdn.modrinth.com/data/RvfAlf4Z/versions/XauQUBeR/Redstone Tweaks 2.5.3.zip?mr_download_reason=modpack", "Redstone Tweaks 2.5.3.zip")]
     public async Task 路径处理_GetLastPart(string input, string expected)
         => await Assert.That(PathUtils.GetLastPart(input)).IsEqualTo(expected);
 
