@@ -85,13 +85,19 @@ public static class StringExtensions {
     /// 分割字符串。
     /// 若原始字符串为空，则返回 {""}。
     /// </summary>
-    public static string[] Split(this string fullStr, string splitStr) {
+    public static string[] Split(this string fullStr, string splitStr, bool removeEmptyEntries = false) {
         if (splitStr.IsSingle()) {
-            return fullStr.Split(splitStr[0]);
+            return fullStr.Split(splitStr[0], removeEmptyEntries);
         } else {
-            return fullStr.Split([splitStr], StringSplitOptions.None);
+            return fullStr.Split([splitStr], removeEmptyEntries ? StringSplitOptions.RemoveEmptyEntries : StringSplitOptions.None);
         }
     }
+    /// <summary>
+    /// 分割字符串。
+    /// 若原始字符串为空，则返回 {""}。
+    /// </summary>
+    public static string[] Split(this string fullStr, char splitChar, bool removeEmptyEntries = false) 
+        => fullStr.Split([splitChar], removeEmptyEntries ? StringSplitOptions.RemoveEmptyEntries : StringSplitOptions.None);
 
     /// <summary>
     /// 获取在子字符串第一次出现之前的部分，如果未找到子字符串则不裁切。
