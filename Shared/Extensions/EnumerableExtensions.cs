@@ -65,6 +65,31 @@ public static class EnumerableExtensions {
         return results;
     }
     /// <summary>
+    /// 选择所有最大值对应的对象。
+    /// 若没有元素则返回空列表。
+    /// </summary>
+    public static List<TSource> MaxByAll<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> selector, IComparer<TKey> comparer) {
+        var results = new List<TSource>();
+        using var enumerator = source.GetEnumerator();
+        if (!enumerator.MoveNext()) return results;
+        TSource maxItem = enumerator.Current;
+        TKey maxValue = selector(maxItem);
+        results.Add(maxItem);
+        while (enumerator.MoveNext()) {
+            TSource currentItem = enumerator.Current;
+            TKey currentValue = selector(currentItem);
+            int comparisonResult = comparer.Compare(currentValue, maxValue);
+            if (comparisonResult > 0) {
+                maxValue = currentValue;
+                results.Clear();
+                results.Add(currentItem);
+            } else if (comparisonResult == 0) {
+                results.Add(currentItem);
+            }
+        }
+        return results;
+    }
+    /// <summary>
     /// 选择所有最小值对应的对象。
     /// 若没有元素则返回空列表。
     /// </summary>
@@ -79,6 +104,31 @@ public static class EnumerableExtensions {
             TSource currentItem = enumerator.Current;
             TKey currentValue = selector(currentItem);
             int comparisonResult = currentValue.CompareTo(minValue);
+            if (comparisonResult < 0) {
+                minValue = currentValue;
+                results.Clear();
+                results.Add(currentItem);
+            } else if (comparisonResult == 0) {
+                results.Add(currentItem);
+            }
+        }
+        return results;
+    }
+    /// <summary>
+    /// 选择所有最小值对应的对象。
+    /// 若没有元素则返回空列表。
+    /// </summary>
+    public static List<TSource> MinByAll<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> selector, IComparer<TKey> comparer) {
+        var results = new List<TSource>();
+        using var enumerator = source.GetEnumerator();
+        if (!enumerator.MoveNext()) return results;
+        TSource minItem = enumerator.Current;
+        TKey minValue = selector(minItem);
+        results.Add(minItem);
+        while (enumerator.MoveNext()) {
+            TSource currentItem = enumerator.Current;
+            TKey currentValue = selector(currentItem);
+            int comparisonResult = comparer.Compare(currentValue, minValue);
             if (comparisonResult < 0) {
                 minValue = currentValue;
                 results.Clear();
@@ -108,6 +158,23 @@ public static class EnumerableExtensions {
         return maxItem;
     }
     /// <summary>
+    /// 选择最大值对应的对象。
+    /// 若没有元素则返回 null。
+    /// </summary>
+    public static TSource? MaxBy<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> selector, IComparer<TKey> comparer) {
+        using var enumerator = source.GetEnumerator();
+        if (!enumerator.MoveNext()) return default;
+        TSource maxItem = enumerator.Current;
+        TKey maxValue = selector(maxItem);
+        while (enumerator.MoveNext()) {
+            TKey value = selector(enumerator.Current);
+            if (comparer.Compare(value, maxValue) <= 0) continue;
+            maxItem = enumerator.Current;
+            maxValue = value;
+        }
+        return maxItem;
+    }
+    /// <summary>
     /// 选择最小值对应的对象。
     /// 若没有元素则返回 null。
     /// </summary>
@@ -119,6 +186,23 @@ public static class EnumerableExtensions {
         while (enumerator.MoveNext()) {
             TKey value = selector(enumerator.Current);
             if (value.CompareTo(minValue) >= 0) { continue; }
+            minItem = enumerator.Current;
+            minValue = value;
+        }
+        return minItem;
+    }
+    /// <summary>
+    /// 选择最小值对应的对象。
+    /// 若没有元素则返回 null。
+    /// </summary>
+    public static TSource? MinBy<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> selector, IComparer<TKey> comparer) {
+        using var enumerator = source.GetEnumerator();
+        if (!enumerator.MoveNext()) { return default; }
+        TSource minItem = enumerator.Current;
+        TKey minValue = selector(minItem);
+        while (enumerator.MoveNext()) {
+            TKey value = selector(enumerator.Current);
+            if (comparer.Compare(value, minValue) >= 0) { continue; }
             minItem = enumerator.Current;
             minValue = value;
         }
