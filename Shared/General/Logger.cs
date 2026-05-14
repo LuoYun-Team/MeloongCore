@@ -215,7 +215,7 @@ public class BaseLogger {
         string prefix = GetLogPrefix(level, filePath);
         if (string.IsNullOrEmpty(text)) return prefix;
         return text
-            .ReplaceLineEndings("\n", mergeMultiple: true).Split(['\n'], StringSplitOptions.RemoveEmptyEntries)
+            .ReplaceLineEndings("\n", mergeMultiple: true).Split('\n', true)
             .Select(t => prefix + t)
             .Join("\r\n");
     }

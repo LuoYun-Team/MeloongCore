@@ -43,7 +43,7 @@ public static class ExceptionExtensions {
             if (showMultilineStacks) {
                 lines.Add((isInnerException ? "→ " : "") + currentEx.Message.ReplaceLineEndings("\r\n", true));
                 if (currentEx.GetType() != typeof(Exception)) lines.Add("   错误类型：" + currentEx.GetType().FullName);
-                var stackLines = (currentEx.StackTrace?.ReplaceLineEndings("\r", true).Split('\r') ?? [])
+                var stackLines = (currentEx.StackTrace?.SplitLines(true) ?? [])
                     .Select(l => l.BeforeLast("(") + l.AfterLast(")"))
                     .Distinct();
                 lines.AddRange(stackLines);

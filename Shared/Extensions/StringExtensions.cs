@@ -184,7 +184,7 @@ public static class StringExtensions {
         => str.Contains(oldValue) ? str.Replace(oldValue, newValueGetter()) : str;
 
     /// <summary>
-    /// 将字符串中的换行符统一替换为指定字符。
+    /// 将字符串中的换行符统一替换为指定字符串。
     /// 若指定了 <paramref name="mergeMultiple"/>，会将多个连续换行符仅替换为一个目标内容。
     /// </summary>
     public static string ReplaceLineEndings(this string input, string newValue, bool mergeMultiple = false) 
@@ -196,7 +196,7 @@ public static class StringExtensions {
     /// 将字符串分割为多行。
     /// </summary>
     public static string[] SplitLines(this string input, bool skipEmptyLines = false) 
-        => input.ReplaceLineEndings("\n").Split(['\n'], skipEmptyLines ? StringSplitOptions.RemoveEmptyEntries : StringSplitOptions.None);
+        => input.ReplaceLineEndings("\n").Split('\n', skipEmptyLines);
 
     #endregion
 
