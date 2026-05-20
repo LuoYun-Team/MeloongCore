@@ -161,6 +161,7 @@ public static class DirectoryUtils {
         Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
         Environment.GetFolderPath(Environment.SpecialFolder.Windows),
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads") // 下载文件夹没有 SpecialFolder 枚举
-    }.Select(f => PathUtils.ForCompare(f))));
+    }.Where(f => f.Contains(Path.VolumeSeparatorChar)) // 当缺少某个文件夹时，GetFolderPath 会返回空字符串（#8636）
+     .Select(f => PathUtils.ForCompare(f))));
 
 }

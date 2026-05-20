@@ -101,7 +101,7 @@ public static class CryptographyUtils {
     #region ECDSA
 
     /// <summary>
-    /// 未指定公钥时使用的默认 ECDSA P-256 公钥。
+    /// 未指定公钥时的默认 ECDSA P-256 公钥。
     /// </summary>
     public static string defaultEcdsaPublicKey = "RUNTMSAAAAC4QTUNAewh23Q4Q6koHkyIrDIIZUSbua23sf2DiZmIRwSzadISDRyTVTbuWniH3KR7rKj8XBsabms1be6i3c+S";
 
