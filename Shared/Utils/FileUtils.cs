@@ -176,16 +176,29 @@ public static class FileUtils {
 
     /// <summary>
     /// 删除文件。
+    /// <para/>若指定了 <paramref name="toRecycleBin"/>，则会尝试删除到回收站，但如果失败则会回退到永久删除。
     /// </summary>
-    public static void Delete(string filePath, bool toRecycleBin = false) {
-        if (!FileUtils.Exists(filePath)) return;
+    /// <returns>
+    /// 如果文件不存在，返回 <see langword="null"/>。
+    /// <para/>如果成功删除到回收站，返回 <see langword="true"/>。
+    /// <para/>如果永久删除，返回 <see langword="false"/>。
+    /// </returns>
+    public static bool? Delete(string filePath, bool toRecycleBin = false) {
+        if (!FileUtils.Exists(filePath)) return null;
         Logger.Trace($"{(toRecycleBin ? "将文件删除到回收站" : "删除文件")}：{filePath}");
+        // 删除到回收站
         if (toRecycleBin) {
-            DeleteToRecycleBin(filePath);
-        } else {
-            ResilientUtils.RetryOn<IOException>(()
-                => File.Delete(PathUtils.ForApi(filePath)));
+            try {
+                DeleteToRecycleBin(filePath);
+                return true;
+            } catch (Exception ex) {
+                Logger.Warn(ex, $"无法将文件删除到回收站，回退到永久删除：{filePath}");
+            }
         }
+        // 永久删除
+        ResilientUtils.RetryOn<IOException>(()
+            => File.Delete(PathUtils.ForApi(filePath)));
+        return false;
     }
 
     /// <summary>

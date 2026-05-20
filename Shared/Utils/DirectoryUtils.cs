@@ -115,32 +115,44 @@ public static class DirectoryUtils {
 
     /// <summary>
     /// 删除文件夹。
+    /// <para/>若指定了 <paramref name="toRecycleBin"/>，则会尝试删除到回收站，但如果失败则会回退到永久删除。
     /// </summary>
-    public static void Delete(string folder, bool toRecycleBin = false) {
-        if (!DirectoryUtils.Exists(folder)) return;
+    /// <returns>
+    /// 如果文件夹不存在，返回 <see langword="null"/>。
+    /// <para/>如果成功删除到回收站，返回 <see langword="true"/>。
+    /// <para/>如果永久删除，返回 <see langword="false"/>。
+    /// </returns>
+    public static bool? Delete(string folder, bool toRecycleBin = false) {
+        if (!DirectoryUtils.Exists(folder)) return null;
         Logger.Trace($"{(toRecycleBin ? "将文件夹删除到回收站" : "删除文件夹")}：{folder}");
         SafetyCheck(folder);
-        // 删除
+        // 删除到回收站
         if (toRecycleBin) {
-            FileUtils.DeleteToRecycleBin(folder); // 删除到回收站
-        } else {
-            DeleteInternal(folder); // 永久删除
-            static void DeleteInternal(string folder) {
-                try {
-                    folder = PathUtils.ForApi(folder);
-                    foreach (string filePath in DirectoryUtils.GetFiles(folder, true)) FileUtils.Delete(filePath); // 删除文件
-                    foreach (string str in DirectoryUtils.GetDirectories(folder, true)) DeleteInternal(str); // 递归删除子文件夹
-                    ResilientUtils.RetryOn<IOException>(() => Directory.Delete(folder, true)); // 最终删除文件夹
-                } catch (DirectoryNotFoundException ex) { // #4549，也可能已被其他线程删除
-                    if (DirectoryUtils.Exists(folder)) {
-                        Logger.Warn(ex, $"该文件夹可能为孤立的符号链接，尝试直接删除（{folder}）");
-                        Directory.Delete(folder);
-                    } else {
-                        throw;
-                    }
+            try {
+                FileUtils.DeleteToRecycleBin(folder);
+                return true;
+            } catch (Exception ex) {
+                Logger.Warn(ex, $"无法将文件夹删除到回收站，回退到永久删除：{folder}");
+            }
+        }
+        // 永久删除
+        DeleteInternal(folder);
+        static void DeleteInternal(string folder) {
+            try {
+                folder = PathUtils.ForApi(folder);
+                foreach (string filePath in DirectoryUtils.GetFiles(folder, true)) FileUtils.Delete(filePath); // 删除文件
+                foreach (string str in DirectoryUtils.GetDirectories(folder, true)) DeleteInternal(str); // 递归删除子文件夹
+                ResilientUtils.RetryOn<IOException>(() => Directory.Delete(folder, true)); // 最终删除文件夹
+            } catch (DirectoryNotFoundException ex) { // #4549，也可能已被其他线程删除
+                if (DirectoryUtils.Exists(folder)) {
+                    Logger.Warn(ex, $"该文件夹可能为孤立的符号链接，尝试直接删除（{folder}）");
+                    Directory.Delete(folder);
+                } else {
+                    throw;
                 }
             }
         }
+        return false;
     }
 
     /// <summary>
