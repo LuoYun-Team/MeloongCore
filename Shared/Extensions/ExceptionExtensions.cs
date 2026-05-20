@@ -39,16 +39,21 @@ public static class ExceptionExtensions {
         // 提取堆栈信息
         var lines = new List<string>();
         bool isInnerException = false;
+        static string getExceptionMessage(Exception e) => e.Message + (e switch {
+            WebException webEx => $" (Status={webEx.Status})",
+            SocketException socketEx => $" (SocketErrorCode={socketEx.SocketErrorCode})",
+            _ => ""
+        });
         foreach (var currentEx in ex.Flatten()) {
             if (showMultilineStacks) {
-                lines.Add((isInnerException ? "→ " : "") + currentEx.Message.ReplaceLineEndings("\r\n", true));
+                lines.Add((isInnerException ? "→ " : "") + getExceptionMessage(currentEx).ReplaceLineEndings("\r\n", true));
                 var stackLines = (currentEx.StackTrace?.SplitLines(true) ?? [])
                     .Select(l => l.BeforeLast("(") + l.AfterLast(")"))
                     .Distinct();
                 lines.AddRange(stackLines);
                 if (currentEx.GetType() != typeof(Exception)) lines.Add("   错误类型：" + currentEx.GetType().FullName);
             } else {
-                lines.Add(currentEx.Message.ReplaceLineEndings(" ", true));
+                lines.Add(getExceptionMessage(currentEx).ReplaceLineEndings(" ", true));
             }
             isInnerException = true;
         }
@@ -104,7 +109,7 @@ public static class ExceptionExtensions {
                 }
                 if (webEx.Status is WebExceptionStatus.NameResolutionFailure or WebExceptionStatus.ConnectFailure or WebExceptionStatus.ReceiveFailure or 
                     WebExceptionStatus.SendFailure or WebExceptionStatus.ConnectionClosed or WebExceptionStatus.KeepAliveFailure or WebExceptionStatus.Timeout or 
-                    WebExceptionStatus.ProxyNameResolutionFailure) return true;
+                    WebExceptionStatus.ProxyNameResolutionFailure or WebExceptionStatus.SecureChannelFailure) return true;
             } else if (currentEx is SocketException socketEx) {
                 if (socketEx.SocketErrorCode is SocketError.NetworkDown or SocketError.NetworkUnreachable or SocketError.NetworkReset or SocketError.ConnectionAborted or 
                     SocketError.ConnectionReset or SocketError.TimedOut or SocketError.ConnectionRefused or SocketError.HostUnreachable or 
