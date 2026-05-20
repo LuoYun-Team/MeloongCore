@@ -28,7 +28,7 @@ public static class CryptographyUtils {
     /// <summary>
     /// 计算字节数组的 Hash。返回十六进制小写字符串。
     /// </summary>
-    public static string ComputeBytesHash(byte[] input, HashMethod method) {
+    public static string ComputeHash(byte[] input, HashMethod method) {
         using HashAlgorithm hashImpl = GetHashAlgorithm(method);
         return BitConverter.ToString(hashImpl.ComputeHash(input)).Replace("-", "").ToLower();
     }
@@ -37,23 +37,23 @@ public static class CryptographyUtils {
     /// 计算字符串的 Hash。返回十六进制小写字符串。
     /// 使用 UTF-8 将字符串转换为字节数组。
     /// </summary>
-    public static string ComputeStringHash(string input, HashMethod method) 
-        => ComputeBytesHash(Encoding.UTF8.GetBytes(input), method);
+    public static string ComputeHash(string input, HashMethod method) 
+        => ComputeHash(Encoding.UTF8.GetBytes(input), method);
 
     #endregion
 
     #region ECDSA
 
     /// <summary>
-    /// 进行 ECDSA P-256 签名验证。如果失败则抛出异常。
+    /// 进行 ECDSA P-256 签名验证。如果验证失败则抛出 <see cref="CryptographicException"/>。
     /// </summary>
     public static void EcdsaVerify(string sourceString, string sign,
         string publicKeyBase64 = "RUNTMSAAAAC4QTUNAewh23Q4Q6koHkyIrDIIZUSbua23sf2DiZmIRwSzadISDRyTVTbuWniH3KR7rKj8XBsabms1be6i3c+S") {
-        // 使用 Windows CNG API 直接处理原始公钥和签名数据，以避免 .NET API 的兼容性问题
         using var sha256 = GetHashAlgorithm(HashMethod.Sha256);
         byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(sourceString));
         IntPtr algorithmHandle = IntPtr.Zero;
         IntPtr keyHandle = IntPtr.Zero;
+        // 直接调用 DLL，以避免 .NET API 依赖的系统服务出现问题时导致验证失败
         try {
             int status = BCryptOpenAlgorithmProvider(out algorithmHandle, "ECDSA_P256", null, 0);
             if (status < 0) throw new CryptographicException($"{nameof(BCryptOpenAlgorithmProvider)} 失败，错误码 {status}");
