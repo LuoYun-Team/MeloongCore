@@ -35,7 +35,7 @@ public static class CryptographyUtils {
     /// <summary>
     /// 计算文件的 Hash。返回 16 进制小写字符串。
     /// </summary>
-    public static string ComputeFileHash(string filePath, HashMethod method) {
+    public static string ComputeFileHash(string filePath, HashMethod method = HashMethod.Md5) {
         using HashAlgorithm hashImpl = GetHashAlgorithm(method);
         Logger.Trace($"计算文件 {method}：{filePath}");
         using var file = FileUtils.ReadAsStream(filePath);
@@ -45,7 +45,7 @@ public static class CryptographyUtils {
     /// <summary>
     /// 计算字节数组的 Hash。返回 16 进制小写字符串。
     /// </summary>
-    public static string ComputeHash(byte[] input, HashMethod method) {
+    public static string ComputeHash(byte[] input, HashMethod method = HashMethod.Md5) {
         using HashAlgorithm hashImpl = GetHashAlgorithm(method);
         return BitConverter.ToString(hashImpl.ComputeHash(input)).Replace("-", "").Lower();
     }
@@ -53,7 +53,7 @@ public static class CryptographyUtils {
     /// 计算字符串的 Hash。返回 16 进制小写字符串。
     /// <para/> 使用 UTF-8 将字符串转换为字节数组。
     /// </summary>
-    public static string ComputeHash(string input, HashMethod method) 
+    public static string ComputeHash(string input, HashMethod method = HashMethod.Md5) 
         => ComputeHash(Encoding.UTF8.GetBytes(input), method);
 
     #endregion
