@@ -63,7 +63,7 @@ public static class PathUtils {
         if (path.StartsWithF(@"\\?\")) return path; // 已经是长路径
         path = RemoveSlashSuffix(path).Replace('/', '\\'); // API 要求这个格式……
         if (path.StartsWithF(@"\\")) {
-            return $@"\\?\UNC\{path.Substring(2)}";
+            return $@"\\?\UNC\{path[2..]}";
         } else {
             return $@"\\?\{path}";
         }

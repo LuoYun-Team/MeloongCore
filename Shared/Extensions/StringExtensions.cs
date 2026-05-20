@@ -1,5 +1,4 @@
 ﻿using System.Text.RegularExpressions;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace MeloongCore.Extensions;
 public static class StringExtensions {
@@ -129,7 +128,7 @@ public static class StringExtensions {
     public static string BeforeFirst(this string str, string text, bool ignoreCase = false) {
         int pos = string.IsNullOrEmpty(text) ? -1 : str.IndexOfF(text, ignoreCase);
         if (pos < 0) return str;
-        return str.Substring(0, pos);
+        return str[..pos];
     }
     /// <summary>
     /// 获取在任意子字符串第一次出现之前的部分，如果未找到任意子字符串则不裁切。
@@ -144,7 +143,7 @@ public static class StringExtensions {
             if (p >= 0 && (pos < 0 || pos > p)) pos = p;
         }
         if (pos < 0) return str;
-        return str.Substring(0, pos);
+        return str[..pos];
     }
 
     /// <summary>
@@ -154,7 +153,7 @@ public static class StringExtensions {
     public static string BeforeLast(this string str, string text, bool ignoreCase = false) {
         int pos = string.IsNullOrEmpty(text) ? -1 : str.LastIndexOfF(text, ignoreCase);
         if (pos < 0) return str;
-        return str.Substring(0, pos);
+        return str[..pos];
     }
     /// <summary>
     /// 获取在任意子字符串最后一次出现之前的部分，如果未找到任意子字符串则不裁切。
@@ -169,7 +168,7 @@ public static class StringExtensions {
             if (p >= 0 && (pos < 0 || pos < p)) pos = p;
         }
         if (pos < 0) return str;
-        return str.Substring(0, pos);
+        return str[..pos];
     }
 
     /// <summary>
@@ -179,7 +178,7 @@ public static class StringExtensions {
     public static string AfterFirst(this string str, string text, bool ignoreCase = false) {
         int pos = string.IsNullOrEmpty(text) ? -1 : str.IndexOfF(text, ignoreCase);
         if (pos < 0) return str;
-        return str.Substring(pos + text!.Length);
+        return str[(pos + text!.Length)..];
     }
     /// <summary>
     /// 获取在任意子字符串第一次出现之后的部分，如果未找到任意子字符串则不裁切。
@@ -198,7 +197,7 @@ public static class StringExtensions {
             }
         }
         if (pos < 0) return str;
-        return str.Substring(pos + len);
+        return str[(pos + len)..];
     }
 
     /// <summary>
@@ -208,7 +207,7 @@ public static class StringExtensions {
     public static string AfterLast(this string str, string text, bool ignoreCase = false) {
         int pos = string.IsNullOrEmpty(text) ? -1 : str.LastIndexOfF(text, ignoreCase);
         if (pos < 0) return str;
-        return str.Substring(pos + text!.Length);
+        return str[(pos + text!.Length)..];
     }
     /// <summary>
     /// 获取在任意子字符串最后一次出现之后的部分，如果未找到任意子字符串则不裁切。
@@ -227,7 +226,7 @@ public static class StringExtensions {
             }
         }
         if (pos < 0) return str;
-        return str.Substring(pos + len);
+        return str[(pos + len)..];
     }
 
     /// <summary>
@@ -245,9 +244,9 @@ public static class StringExtensions {
 
         int endPos = string.IsNullOrEmpty(before) ? -1 : str.IndexOfF(before, startPos, ignoreCase);
         if (endPos >= 0) {
-            return str.Substring(startPos, endPos - startPos);
+            return str[startPos..endPos];
         } else if (startPos > 0) {
-            return str.Substring(startPos);
+            return str[startPos..];
         } else {
             return str;
         }
@@ -374,7 +373,7 @@ public static class StringExtensions {
     /// </summary>
     public static string Capitalize(this string word) {
         if (string.IsNullOrEmpty(word)) return word;
-        return $"{word.Substring(0, 1).Upper()}{word.Substring(1).Lower()}";
+        return $"{word[..1].Upper()}{word[1..].Lower()}";
     }
 
     /// <summary>
@@ -383,7 +382,7 @@ public static class StringExtensions {
     /// </summary>
     public static string EnsureLength(this string? str, char code, int length) {
         str ??= "";
-        return str.Length > length ? str.Substring(0, length) : str.PadLeft(length, code);
+        return str.Length > length ? str[..length] : str.PadLeft(length, code);
     }
 
     /// <summary>
@@ -391,5 +390,14 @@ public static class StringExtensions {
     /// </summary>
     public static bool IsAsciiOnly(this string input) 
         => input.All(c => c < 128);
+
+    /// <summary>
+    /// 计算字符串的哈希，其结果在不同环境中均能保持一致。
+    /// </summary>
+    public static ulong GetStableHashCode(this string str) {
+        ulong result = 5381;
+        foreach (char v in str) result = (result << 5) ^ result ^ v;
+        return result ^ 0xA98F501BC684032FUL;
+    }
 
 }

@@ -24,13 +24,19 @@ public static class MathUtils {
             if (digit == -1 || digit >= fromRadix) throw new ArgumentException($"Character '{c}' in input '{input}' is not a valid digit for radix {fromRadix}.");
             realNum = realNum * fromRadix + digit;
         }
-        return ConvertRadix(realNum * (isNegative ? -1 : 1), toRadix);
+        return (realNum * (isNegative ? -1 : 1)).ConvertRadix(toRadix);
     }
     /// <summary>
     /// 转换为 2 到 86 进制的字符串。
     /// 进制参考：含大写字母 36，含大小写字母 62，含大小写字母和特殊符号 86。
     /// </summary>
-    public static string ConvertRadix(this long input, int toRadix) 
+    public static string ConvertRadix(this long input, int toRadix)
+        => ConvertRadix((BigInteger) input, toRadix);
+    /// <summary>
+    /// 转换为 2 到 86 进制的字符串。
+    /// 进制参考：含大写字母 36，含大小写字母 62，含大小写字母和特殊符号 86。
+    /// </summary>
+    public static string ConvertRadix(this ulong input, int toRadix)
         => ConvertRadix((BigInteger) input, toRadix);
     /// <summary>
     /// 转换为 2 到 86 进制的字符串。
@@ -44,8 +50,11 @@ public static class MathUtils {
     /// </summary>
     public static string ConvertRadix(this byte input, int toRadix) 
         => ConvertRadix((BigInteger) input, toRadix);
-
-    private static string ConvertRadix(this BigInteger input, int toRadix) {
+    /// <summary>
+    /// 转换为 2 到 86 进制的字符串。
+    /// 进制参考：含大写字母 36，含大小写字母 62，含大小写字母和特殊符号 86。
+    /// </summary>
+    public static string ConvertRadix(this BigInteger input, int toRadix) {
         const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz/+=!?@#$%^&*()[]{}<>;:',";
         if (toRadix < 2 || toRadix > digits.Length) throw new ArgumentOutOfRangeException(nameof(toRadix), $"{nameof(toRadix)} must be between 2 and 86.");
         // 零与负数的预处理
