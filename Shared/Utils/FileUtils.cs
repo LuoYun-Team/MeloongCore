@@ -6,17 +6,23 @@ public static class FileUtils {
     #region 读取
 
     /// <summary>
-    /// 打开指定文件的只读 <see cref="FileStream"/>。
+    /// 打开指定文件的只读 <see cref="Stream"/>。
+    /// <para/>若指定了 <paramref name="type"/>，则会改为从该类型的程序集中读取嵌入的资源。
     /// </summary>
-    public static FileStream ReadAsStream(string filePath)
-        => ResilientUtils.RetryOn<IOException, FileStream>(()
-            => new(PathUtils.ForApi(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+    public static Stream ReadAsStream(string filePath, Type? type = null) {
+        if (type is null) {
+            return ResilientUtils.RetryOn<IOException, Stream>(() => new FileStream(PathUtils.ForApi(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+        } else {
+            return type.Assembly.GetManifestResourceStream(filePath) ?? throw new FileNotFoundException($"Embedded resource \"{filePath}\" was not found.");
+        }
+    }
 
     /// <summary>
     /// 读取文件中的所有内容。
+    /// <para/>若指定了 <paramref name="type"/>，则会改为从该类型的程序集中读取嵌入的资源。
     /// </summary>
-    public static byte[] ReadAsBytes(string filePath) {
-        using Stream fs = FileUtils.ReadAsStream(filePath); // 不能使用 File.ReadAllBytes，它不指定 FileShare.ReadWrite，会在文件被占用时抛出异常
+    public static byte[] ReadAsBytes(string filePath, Type? type = null) {
+        using Stream fs = FileUtils.ReadAsStream(filePath, type); // 不能使用 File.ReadAllBytes，它不指定 FileShare.ReadWrite，会在文件被占用时抛出异常
         using MemoryStream ms = new();
         fs.CopyTo(ms);
         return ms.ToArray();
@@ -24,17 +30,19 @@ public static class FileUtils {
 
     /// <summary>
     /// 读取文件中的所有内容。
+    /// <para/>若指定了 <paramref name="type"/>，则会改为从该类型的程序集中读取嵌入的资源。
     /// </summary>
-    public static string ReadAsString(string filePath, Encoding? encoding = null) 
-        => FileUtils.ReadAsBytes(filePath).GetString(encoding);
+    public static string ReadAsString(string filePath, Encoding? encoding = null, Type? type = null) 
+        => FileUtils.ReadAsBytes(filePath, type).GetString(encoding);
     /// <summary>
     /// 读取文件中的所有内容。
-    /// 若文件不存在或读取失败，返回 <see langword="null"/>，而不是抛出异常。
+    /// <para/>若文件不存在或读取失败，返回 <see langword="null"/>，而不是抛出异常。
+    /// <para/>若指定了 <paramref name="type"/>，则会改为从该类型的程序集中读取嵌入的资源。
     /// </summary>
-    public static string? TryReadAsString(string filePath, Encoding? encoding = null) {
+    public static string? TryReadAsString(string filePath, Encoding? encoding = null, Type? type = null) {
         try {
-            if (!FileUtils.Exists(filePath)) return null;
-            return FileUtils.ReadAsBytes(filePath).GetString(encoding);
+            if (type != null && !FileUtils.Exists(filePath)) return null;
+            return FileUtils.ReadAsBytes(filePath, type).GetString(encoding);
         } catch {
             return null;
         }
@@ -42,15 +50,17 @@ public static class FileUtils {
 
     /// <summary>
     /// 读取文件中的所有内容，并按行分割。
+    /// <para/>若指定了 <paramref name="type"/>，则会改为从该类型的程序集中读取嵌入的资源。
     /// </summary>
-    public static string[] ReadAsLines(string filePath, bool skipEmptyLines = false, Encoding? encoding = null)
-        => FileUtils.ReadAsString(filePath, encoding).SplitLines(skipEmptyLines);
+    public static string[] ReadAsLines(string filePath, bool skipEmptyLines = false, Encoding? encoding = null, Type? type = null)
+        => FileUtils.ReadAsString(filePath, encoding, type).SplitLines(skipEmptyLines);
     /// <summary>
     /// 读取文件中的所有内容，并按行分割。
-    /// 若文件不存在或读取失败，返回空数组，而不是抛出异常。
+    /// <para/>若文件不存在或读取失败，返回空数组，而不是抛出异常。
+    /// <para/>若指定了 <paramref name="type"/>，则会改为从该类型的程序集中读取嵌入的资源。
     /// </summary>
-    public static string[] TryReadAsLines(string filePath, bool skipEmptyLines = false, Encoding? encoding = null)
-        => FileUtils.TryReadAsString(filePath, encoding)?.SplitLines(skipEmptyLines) ?? [];
+    public static string[] TryReadAsLines(string filePath, bool skipEmptyLines = false, Encoding? encoding = null, Type? type = null)
+        => FileUtils.TryReadAsString(filePath, encoding, type)?.SplitLines(skipEmptyLines) ?? [];
 
     #endregion
 
