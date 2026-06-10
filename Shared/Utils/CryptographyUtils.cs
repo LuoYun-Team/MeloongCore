@@ -58,52 +58,12 @@ public static class CryptographyUtils {
 
     #endregion
 
-    #region DES
-    private static readonly byte[] desInitialVector = Encoding.UTF8.GetBytes("95168702");
-
-    /// <summary>
-    /// 未指定密钥时使用的默认 DES 密钥。必须为 8 字节。
-    /// </summary>
-    public static string defaultDesKey = "@;$ Abv2";
-
-    /// <summary>
-    /// 使用 DES 对称加密算法加密字符串。
-    /// </summary>
-    public static string DesEncrypt(string sourceString, string? key = null) {
-        key = key is null ? defaultDesKey : key!.GetStableHashCode().ToString().EnsureLength('X', 8)[..8];
-        byte[] btKey = Encoding.UTF8.GetBytes(key);
-        var des = new DESCryptoServiceProvider();
-        using var ms = new MemoryStream();
-        using var cs = new CryptoStream(ms, des.CreateEncryptor(btKey, desInitialVector), CryptoStreamMode.Write);
-        byte[] inData = Encoding.UTF8.GetBytes(sourceString);
-        cs.Write(inData, 0, inData.Length);
-        cs.FlushFinalBlock();
-        return Convert.ToBase64String(ms.ToArray());
-    }
-
-    /// <summary>
-    /// 使用 DES 对称加密算法解密字符串。
-    /// </summary>
-    public static string DesDecrypt(string encryptedString, string? key = null) {
-        key = key is null ? defaultDesKey : key!.GetStableHashCode().ToString().EnsureLength('X', 8)[..8];
-        byte[] btKey = Encoding.UTF8.GetBytes(key);
-        var des = new DESCryptoServiceProvider();
-        using var ms = new MemoryStream();
-        using var cs = new CryptoStream(ms, des.CreateDecryptor(btKey, desInitialVector), CryptoStreamMode.Write);
-        byte[] inData = Convert.FromBase64String(encryptedString);
-        cs.Write(inData, 0, inData.Length);
-        cs.FlushFinalBlock();
-        return Encoding.UTF8.GetString(ms.ToArray());
-    }
-
-    #endregion
-
     #region ECDSA
 
     /// <summary>
     /// 未指定公钥时的默认 ECDSA P-256 公钥。
     /// </summary>
-    public static string defaultEcdsaPublicKey = "RUNTMSAAAAC4QTUNAewh23Q4Q6koHkyIrDIIZUSbua23sf2DiZmIRwSzadISDRyTVTbuWniH3KR7rKj8XBsabms1be6i3c+S";
+    public static string DefaultEcdsaPublicKey = "RUNTMSAAAAC4QTUNAewh23Q4Q6koHkyIrDIIZUSbua23sf2DiZmIRwSzadISDRyTVTbuWniH3KR7rKj8XBsabms1be6i3c+S";
 
     /// <summary>
     /// 进行 ECDSA P-256 非对称加密签名验证。
@@ -118,7 +78,7 @@ public static class CryptographyUtils {
         try {
             int status = BCryptOpenAlgorithmProvider(out algorithmHandle, "ECDSA_P256", null, 0);
             if (status < 0) throw new CryptographicException($"{nameof(BCryptOpenAlgorithmProvider)} 失败，错误码 {status}");
-            status = BCryptImportKeyPair(algorithmHandle, IntPtr.Zero, "ECCPUBLICBLOB", out keyHandle, Convert.FromBase64String(publicKey ?? defaultEcdsaPublicKey), 72, 0);
+            status = BCryptImportKeyPair(algorithmHandle, IntPtr.Zero, "ECCPUBLICBLOB", out keyHandle, Convert.FromBase64String(publicKey ?? DefaultEcdsaPublicKey), 72, 0);
             if (status < 0) throw new CryptographicException($"{nameof(BCryptImportKeyPair)} 失败，错误码 {status}");
             status = BCryptVerifySignature(keyHandle, IntPtr.Zero, hash, hash.Length, Convert.FromBase64String(sign), 64, 0);
             if (status == unchecked((int) 0xC000A000)) throw new SecurityException("签名验证失败");
