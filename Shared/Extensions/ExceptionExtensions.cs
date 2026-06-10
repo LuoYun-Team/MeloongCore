@@ -31,9 +31,9 @@ public static class ExceptionExtensions {
 
     /// <summary>
     /// 获取 <paramref name="ex"/> 的用户友好描述。
-    /// 若 <paramref name="showMultilineStacks"/> 为 true，则返回多行的详细描述与堆栈信息；否则不整理堆栈，仅将 <see cref="Exception.Message"/> 汇总到一行。
+    /// 若 <paramref name="multiline"/> 为 true，则返回多行的详细描述与堆栈信息；否则不整理堆栈，仅将 <see cref="Exception.Message"/> 汇总到一行。
     /// </summary>
-    public static string GetDisplay(this Exception? ex, bool showMultilineStacks) {
+    public static string GetDisplay(this Exception? ex, bool multiline) {
         if (ex is null) return "无可用错误信息！";
 
         // 提取堆栈信息
@@ -45,7 +45,7 @@ public static class ExceptionExtensions {
             _ => ""
         });
         foreach (var currentEx in ex.Flatten()) {
-            if (showMultilineStacks) {
+            if (multiline) {
                 lines.Add((isInnerException ? "→ " : "") + getExceptionMessage(currentEx).ReplaceLineEndings("\r\n", true));
                 var stackLines = (currentEx.StackTrace?.SplitLines(true) ?? [])
                     .Select(l => l.BeforeLast("(") + l.AfterLast(")"))
@@ -73,7 +73,7 @@ public static class ExceptionExtensions {
             commonReason = "你的网络环境不佳，请稍后再试，或使用 VPN 改善网络环境。";
 
         // 输出
-        if (showMultilineStacks) {
+        if (multiline) {
             if (commonReason is null) {
                 return lines.Join("\r\n");
             } else {

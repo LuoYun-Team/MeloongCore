@@ -1,4 +1,6 @@
-﻿using System.Text.RegularExpressions;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Text.RegularExpressions;
 
 namespace MeloongCore.Extensions;
 public static class StringExtensions {
@@ -331,8 +333,6 @@ public static class StringExtensions {
 
     #endregion
 
-    #region 读取为字符串
-
     /// <summary>
     /// 读取 <see cref="Stream"/> 中的内容，并解码为字符串。
     /// 会将流的位置主动重置到开头。
@@ -366,8 +366,6 @@ public static class StringExtensions {
         }
     }
 
-    #endregion
-
     /// <summary>
     /// 将第一个字符转换为大写，其余字符转换为小写。
     /// </summary>
@@ -398,6 +396,22 @@ public static class StringExtensions {
         ulong result = 5381;
         foreach (char v in str) result = (result << 5) ^ result ^ v;
         return result ^ 0xA98F501BC684032FUL;
+    }
+
+    /// <summary>
+    /// 将字符串转化为 JSON 对象。
+    /// </summary>
+    public static JToken? DeserializeJson(this string data) {
+        try {
+            return JsonConvert.DeserializeObject<JToken>(data, new JsonSerializerSettings {DateTimeZoneHandling = DateTimeZoneHandling.Local});
+        } catch (Exception ex) {
+            int length = (data ?? "").Length;
+            throw new FormatException("JSON deserialize failed: " + 
+                (length > 2000
+                    ? $"{data![..500]}...(total {length} characters)...{data[^500..]}"
+                    : (data ?? "")), 
+            ex);
+        }
     }
 
 }

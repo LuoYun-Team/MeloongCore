@@ -406,3 +406,87 @@ public static class FileUtils {
         => new(PathUtils.ForApi(path));
 
 }
+
+public class FileChecker {
+
+    /// <summary>
+    /// 文件的准确大小。
+    /// <para/>不检查则为 -1。
+    /// </summary>
+    public long ActualSize = -1;
+
+    /// <summary>
+    /// 文件的最小大小。
+    /// <para/>不检查则为 -1。
+    /// </summary>
+    public long MinSize = -1;
+
+    /// <summary>
+    /// 文件的 MD5、SHA1、SHA256 或 SHA512。会根据输入字符串的长度自动判断种类。
+    /// <para/>不检查则为 <c>null</c>。
+    /// </summary>
+    public string? Hash = null;
+
+    /// <summary>
+    /// 是否要求为 JSON 文件。
+    /// </summary>
+    public bool IsJson = false;
+
+    /// <summary>
+    /// 检查文件。
+    /// <para/>若成功则返回 <c>null</c>，失败则返回错误的描述文本（文本不以句号结尾）。
+    /// <para/>不会抛出异常。
+    /// </summary>
+    public string? Check(string localPath) {
+        try {
+            var info = FileUtils.GetInfo(localPath);
+            if (!info.Exists) return "文件不存在：" + localPath;
+
+            long fileSize = info.Length;
+            if (ActualSize >= 0 && ActualSize != fileSize) {
+                return $"文件大小应为 {ActualSize} B，实际为 {fileSize} B" +
+                    (fileSize < 2000 ? "，内容为：" + FileUtils.ReadAsString(localPath) : "");
+            }
+            if (MinSize >= 0 && MinSize > fileSize) {
+                return $"文件大小应至少为 {MinSize} B，实际为 {fileSize} B" +
+                    (fileSize < 2000 ? "，内容为：" + FileUtils.ReadAsString(localPath) : "");
+            }
+
+            string? hash = Hash;
+            if (!string.IsNullOrEmpty(hash)) {
+                hash = hash!.Lower();
+                switch (hash.Length) {
+                    case 32:
+                        string md5 = CryptographyUtils.ComputeFileHash(localPath, CryptographyUtils.HashMethod.Md5);
+                        if (hash != md5) return "文件 MD5 应为 " + hash + "，实际为 " + md5;
+                        break;
+                    case 40:
+                        string sha1 = CryptographyUtils.ComputeFileHash(localPath, CryptographyUtils.HashMethod.Sha1);
+                        if (hash != sha1) return "文件 SHA1 应为 " + hash + "，实际为 " + sha1;
+                        break;
+                    case 64:
+                        string sha256 = CryptographyUtils.ComputeFileHash(localPath, CryptographyUtils.HashMethod.Sha256);
+                        if (hash != sha256) return "文件 SHA256 应为 " + hash + "，实际为 " + sha256;
+                        break;
+                    case 128:
+                        string sha512 = CryptographyUtils.ComputeFileHash(localPath, CryptographyUtils.HashMethod.Sha512);
+                        if (hash != sha512) return "文件 SHA512 应为 " + hash + "，实际为 " + sha512;
+                        break;
+                    default:
+                        return $"无法识别的 Hash 类型（长度为 {hash.Length}）：{hash}";
+                }
+            }
+
+            if (IsJson) {
+                string content = FileUtils.ReadAsString(localPath);
+                if (content == "") return "读取到的文件为空";
+                //GetJson(content); // 失败会抛出异常
+            }
+
+            return null;
+        } catch (Exception ex) {
+            Logger.Warn(ex, "检查文件出错");
+            return ex.GetDisplay(false);
+        }
+    }
+}
