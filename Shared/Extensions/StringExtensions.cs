@@ -399,7 +399,7 @@ public static class StringExtensions {
     }
 
     /// <summary>
-    /// 将字符串转化为 JSON 对象。
+    /// 将字符串转化为 JSON 对象，若失败则抛出异常。
     /// </summary>
     public static JToken? DeserializeJson(this string data) {
         try {

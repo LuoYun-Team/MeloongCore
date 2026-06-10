@@ -1,4 +1,5 @@
-﻿using System.IO.Compression;
+﻿using Newtonsoft.Json.Linq;
+using System.IO.Compression;
 
 namespace MeloongCore;
 public static class FileUtils {
@@ -61,6 +62,13 @@ public static class FileUtils {
     /// </summary>
     public static string[] TryReadAsLines(string filePath, bool skipEmptyLines = false, Encoding? encoding = null, Type? type = null)
         => FileUtils.TryReadAsString(filePath, encoding, type)?.SplitLines(skipEmptyLines) ?? [];
+
+    /// <summary>
+    /// 读取 JSON 文件中的所有内容。
+    /// <para/>若指定了 <paramref name="type"/>，则会改为从该类型的程序集中读取嵌入的资源。
+    /// </summary>
+    public static JToken? ReadAsJson(string filePath, Encoding? encoding = null, Type? type = null)
+        => FileUtils.ReadAsString(filePath, encoding, type).DeserializeJson();
 
     #endregion
 
@@ -407,6 +415,9 @@ public static class FileUtils {
 
 }
 
+/// <summary>
+/// 检查文件是否符合校验规则，包括大小、Hash 值、是否为 JSON 文件。
+/// </summary>
 public class FileChecker {
 
     /// <summary>
@@ -480,7 +491,7 @@ public class FileChecker {
             if (IsJson) {
                 string content = FileUtils.ReadAsString(localPath);
                 if (content == "") return "读取到的文件为空";
-                //GetJson(content); // 失败会抛出异常
+                content.DeserializeJson();
             }
 
             return null;
