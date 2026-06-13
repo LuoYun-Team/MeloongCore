@@ -78,7 +78,7 @@ public static class DirectoryUtils {
         } else {
             // 实际的复制
             Logger.Trace($"复制文件夹：{sourceFolder} → {destFolder}");
-            foreach (var file in DirectoryUtils.GetFiles(sourceFolder)) FileUtils.Copy(file, file.Replace(sourceFolder, destFolder));
+            foreach (var file in DirectoryUtils.GetFiles(sourceFolder).ToList()) FileUtils.Copy(file, file.Replace(sourceFolder, destFolder));
         }
     }
 
@@ -103,8 +103,10 @@ public static class DirectoryUtils {
             // 同一磁盘剪切，直接调用 Move（这只修改文件夹名，效率更高）
             Logger.Trace($"剪切文件夹到同一磁盘：{sourceFolder} → {destFolder}");
             DirectoryUtils.Delete(destFolder); // Move 要求此前不存在对应文件夹
-            ResilientUtils.RetryOn<IOException>(() 
-                => Directory.Move(PathUtils.ForApi(sourceFolder), PathUtils.ForApi(destFolder)));
+            ResilientUtils.RetryOn<IOException>(() => {
+                FileUtils.SetReadOnly(sourceFolder, false);
+                Directory.Move(PathUtils.ForApi(sourceFolder), PathUtils.ForApi(destFolder));
+            });
         } else {
             // 不同磁盘，必须先复制再删除，这就是我们傻逼微软
             Logger.Trace($"剪切文件夹到不同磁盘：{sourceFolder} → {destFolder}");
@@ -142,10 +144,14 @@ public static class DirectoryUtils {
                 folder = PathUtils.ForApi(folder);
                 foreach (string filePath in DirectoryUtils.GetFiles(folder, true)) FileUtils.Delete(filePath); // 删除文件
                 foreach (string str in DirectoryUtils.GetDirectories(folder, true)) DeleteInternal(str); // 递归删除子文件夹
-                ResilientUtils.RetryOn<IOException>(() => Directory.Delete(folder, true)); // 最终删除文件夹
+                ResilientUtils.RetryOn<IOException>(() => {
+                    FileUtils.SetReadOnly(folder, false);
+                    Directory.Delete(folder, true);
+                }); // 最终删除文件夹
             } catch (DirectoryNotFoundException ex) { // #4549，也可能已被其他线程删除
                 if (DirectoryUtils.Exists(folder)) {
                     Logger.Warn(ex, $"该文件夹可能为孤立的符号链接，尝试直接删除（{folder}）");
+                    FileUtils.SetReadOnly(folder, false);
                     Directory.Delete(folder);
                 } else {
                     throw;

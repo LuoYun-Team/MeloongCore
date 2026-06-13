@@ -42,7 +42,7 @@ public static class FileUtils {
     /// </summary>
     public static string? TryReadAsString(string filePath, Encoding? encoding = null, Type? type = null) {
         try {
-            if (type != null && !FileUtils.Exists(filePath)) return null;
+            if (type == null && !FileUtils.Exists(filePath)) return null;
             return FileUtils.ReadAsBytes(filePath, type).GetString(encoding);
         } catch {
             return null;
@@ -155,6 +155,7 @@ public static class FileUtils {
             // 实际的复制
             DirectoryUtils.Create(PathUtils.RemoveLastPart(destFilePath));
             Logger.Trace($"复制文件：{sourceFilePath} → {destFilePath}");
+            if (FileUtils.Exists(destFilePath)) FileUtils.SetReadOnly(destFilePath, false);
             ResilientUtils.RetryOn<IOException>(() 
                 => File.Copy(PathUtils.ForApi(sourceFilePath), PathUtils.ForApi(destFilePath), true));
         }
@@ -175,6 +176,8 @@ public static class FileUtils {
             Logger.Trace($"剪切文件到自身，但大小写不同：{sourceFilePath} → {destFilePath}");
             ResilientUtils.RetryOn<IOException>(() => {
                 var temp = Path.Combine(PathUtils.RemoveLastPart(sourceFilePath), Path.GetRandomFileName());
+                FileUtils.SetReadOnly(sourceFilePath, false);
+                if (FileUtils.Exists(destFilePath)) FileUtils.SetReadOnly(destFilePath, false);
                 File.Move(PathUtils.ForApi(sourceFilePath), PathUtils.ForApi(temp));
                 File.Move(PathUtils.ForApi(temp), PathUtils.ForApi(destFilePath));
             });
@@ -183,8 +186,11 @@ public static class FileUtils {
             DirectoryUtils.Create(PathUtils.RemoveLastPart(destFilePath));
             FileUtils.Delete(destFilePath);
             Logger.Trace($"剪切文件：{sourceFilePath} → {destFilePath}");
-            ResilientUtils.RetryOn<IOException>(()
-                => File.Move(PathUtils.ForApi(sourceFilePath), PathUtils.ForApi(destFilePath)));
+            ResilientUtils.RetryOn<IOException>(() => {
+                FileUtils.SetReadOnly(sourceFilePath, false);
+                if (FileUtils.Exists(destFilePath)) FileUtils.SetReadOnly(destFilePath, false);
+                File.Move(PathUtils.ForApi(sourceFilePath), PathUtils.ForApi(destFilePath));
+            });
         }
     }
 
@@ -214,8 +220,10 @@ public static class FileUtils {
             }
         }
         // 永久删除
-        ResilientUtils.RetryOn<IOException>(()
-            => File.Delete(PathUtils.ForApi(filePath)));
+        ResilientUtils.RetryOn<IOException>(() => {
+            FileUtils.SetReadOnly(filePath, false);
+            File.Delete(PathUtils.ForApi(filePath));
+        });
         return false;
     }
 
@@ -248,7 +256,7 @@ public static class FileUtils {
             System.Runtime.ExceptionServices.ExceptionDispatchInfo? internalEx = null; // 捕获内部异常
             var thread = new Thread(() => { 
                 try { 
-                    ResilientUtils.RetryOn<IOException>(Run); 
+                    ResilientUtils.RetryOn<IOException, COMException>(Run); 
                 } catch (Exception ex) { 
                     internalEx = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex); 
                 } 
@@ -412,6 +420,21 @@ public static class FileUtils {
     /// </summary>
     public static FileInfo GetInfo(string path) 
         => new(PathUtils.ForApi(path));
+
+    /// <summary>
+    /// 设置文件或文件夹的只读属性。
+    /// 对文件夹使用时，只会设置文件夹本身的属性，不会递归设置其中的文件或子文件夹。
+    /// </summary>
+    public static void SetReadOnly(string path, bool readOnly) {
+        path = PathUtils.ForApi(path);
+        var attributes = File.GetAttributes(path);
+        var newAttributes = readOnly
+            ? attributes | FileAttributes.ReadOnly
+            : attributes & ~FileAttributes.ReadOnly;
+        if (attributes == newAttributes) return;
+        Logger.Trace($"{(readOnly ? "添加" : "移除")}只读属性：{path}（原属性：{attributes}，新属性：{newAttributes}）");
+        File.SetAttributes(path, newAttributes);
+    }
 
 }
 
