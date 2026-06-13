@@ -220,7 +220,7 @@ public class BaseLogger {
             .Join("\r\n");
     }
     public static string GetLogPrefix(LogLevel level, string filePath)
-        => $"{DateTime.Now:HH':'mm':'ss'.'fff} {level.ToString().First()} {(Thread.CurrentThread.Name is null ? "" : $"<{Thread.CurrentThread.Name}> ")}[{PathUtils.GetLastPart(filePath).BeforeFirst(".")}] ";
+        => $"{DateTime.Now:HH':'mm':'ss'.'fff} {level.ToString().First()} {(Thread.CurrentThread.Name is null ? "" : $"<{Thread.CurrentThread.ManagedThreadId} · {Thread.CurrentThread.Name}> ")}[{PathUtils.GetLastPart(filePath).BeforeFirst(".")}] ";
 
     /// <summary>
     /// 执行 <see cref="LogBehavior"/>。
