@@ -342,15 +342,6 @@ public static class EnumerableExtensions {
     }
 
     /// <summary>
-    /// 该列表是否至少有一个元素。
-    /// </summary>
-    public static bool Any<T>(this IList<T> list) => list.Count > 0;
-    /// <summary>
-    /// 该列表是否至少有一个元素。
-    /// </summary>
-    public static bool Any(this IList list) => list.Count > 0;
-
-    /// <summary>
     /// 对集合的每个元素执行指定操作。
     /// </summary>
     public static IEnumerable<T> ForAll<T>(this IEnumerable<T> source, Action<T> action) {
