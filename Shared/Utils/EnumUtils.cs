@@ -11,6 +11,21 @@ public static class EnumUtils {
         => Enum.GetValues(typeof(T)).Cast<T>();
 
     /// <summary>
+    /// 将字符串转换为枚举。
+    /// 支持枚举名或枚举序数；若为空字符串或 <see langword="null"/> 则返回 0。
+    /// 转换失败会抛出异常。
+    /// </summary>
+    public static T FromString<T>(string? value) where T : struct, Enum {
+        if (string.IsNullOrEmpty(value)) {
+            return (T) Enum.ToObject(typeof(T), 0);
+        } else if (double.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out var number)) {
+            return (T) Enum.ToObject(typeof(T), Convert.ToInt64(number));
+        } else {
+            return (T) Enum.Parse(typeof(T), value, true);
+        }
+    }
+
+    /// <summary>
     /// 对于具有 <see cref="FlagsAttribute"/> 的枚举，返回其所有 Flag 值。
     /// 建议仅对没有极端值的正数枚举使用。
     /// </summary>
