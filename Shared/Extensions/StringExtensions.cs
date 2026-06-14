@@ -413,5 +413,10 @@ public static class StringExtensions {
             ex);
         }
     }
+    /// <summary>
+    /// 将字符串转化为 JSON 对象，若失败则抛出异常。
+    /// </summary>
+    public static T? DeserializeJson<T>(this string data) where T : JToken 
+        => (T?) DeserializeJson(data);
 
 }
