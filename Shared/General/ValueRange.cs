@@ -1,7 +1,7 @@
 ﻿namespace MeloongCore;
 
 /// <summary>
-/// 表示一个由可选下界和可选上界组成的值范围。
+/// 表示一个由可选下界和可选上界组成的范围。
 /// </summary>
 public sealed class ValueRange<T>(
     T? lower, T? upper,
@@ -75,6 +75,75 @@ public sealed class ValueRange<T>(
             if (compareUpper == 0 && !IsUpperInclusive) return false;
         }
         return true;
+    }
+
+    /// <summary>
+    /// 取当前范围与另一个范围的交集。
+    /// </summary>
+    /// <returns>
+    /// 若两个范围存在交集，则返回交集范围；否则返回 <see langword="null" />。
+    /// </returns>
+    public ValueRange<T>? Intersect(ValueRange<T> other) {
+        T? lower = default;
+        T? upper = default;
+        var isLowerInclusive = true;
+        var isUpperInclusive = true;
+
+        if (HasLower && other.HasLower) {
+            switch (Lower!.CompareTo(other.Lower!)) {
+                case > 0:
+                    lower = Lower;
+                    isLowerInclusive = IsLowerInclusive;
+                    break;
+                case < 0:
+                    lower = other.Lower;
+                    isLowerInclusive = other.IsLowerInclusive;
+                    break;
+                default:
+                    lower = Lower;
+                    isLowerInclusive = IsLowerInclusive && other.IsLowerInclusive;
+                    break;
+            }
+        } else if (HasLower) {
+            lower = Lower;
+            isLowerInclusive = IsLowerInclusive;
+        } else if (other.HasLower) {
+            lower = other.Lower;
+            isLowerInclusive = other.IsLowerInclusive;
+        }
+
+        if (HasUpper && other.HasUpper) {
+            switch (Upper!.CompareTo(other.Upper!)) {
+                case < 0:
+                    upper = Upper;
+                    isUpperInclusive = IsUpperInclusive;
+                    break;
+                case > 0:
+                    upper = other.Upper;
+                    isUpperInclusive = other.IsUpperInclusive;
+                    break;
+                default:
+                    upper = Upper;
+                    isUpperInclusive = IsUpperInclusive && other.IsUpperInclusive;
+                    break;
+            }
+        } else if (HasUpper) {
+            upper = Upper;
+            isUpperInclusive = IsUpperInclusive;
+        } else if (other.HasUpper) {
+            upper = other.Upper;
+            isUpperInclusive = other.IsUpperInclusive;
+        }
+
+        var anyHasLower = HasLower || other.HasLower;
+        var anyHasUpper = HasUpper || other.HasUpper;
+        if (anyHasLower && anyHasUpper) {
+            var compare = lower!.CompareTo(upper!);
+            if (compare > 0) return null;
+            if (compare == 0 && (!isLowerInclusive || !isUpperInclusive)) return null;
+        }
+
+        return new(lower, upper, isLowerInclusive, isUpperInclusive, anyHasLower, anyHasUpper);
     }
 
     public override string ToString()
