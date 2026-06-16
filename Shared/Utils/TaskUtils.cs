@@ -12,7 +12,6 @@ public static class TaskUtils {
     /// 超时或启动失败会抛出异常。
     /// </summary>
     public static async Task<(string Output, int ExitCode)> RunProgramAsync(string file, string arguments = "", int? timeoutMs = null, Encoding? encoding = null) {
-        Logger.Info($"运行程序，并返回其输出：{file} {arguments}");
         var info = new ProcessStartInfo {
             Arguments = arguments,
             FileName = PathUtils.ToShortPath(file),
@@ -23,6 +22,8 @@ public static class TaskUtils {
         };
         using var program = new Process { StartInfo = info, EnableRaisingEvents = true };
         if (!program.Start()) throw new InvalidOperationException($"运行程序时出现意外错误：{file} {arguments}");
+        bool hasTimeout = timeoutMs.HasValue && timeoutMs > 0;
+        Logger.Info($"运行程序，并返回其输出：{file} {arguments}{(hasTimeout ? $"，最长可等待 {timeoutMs}ms" : "")}");
 
         // 读取输出和错误流
         var outputTask = program.StandardOutput.ReadToEndAsync();
@@ -33,9 +34,9 @@ public static class TaskUtils {
         var task = completionSource.Task;
 
         // 等待超时
-        if (timeoutMs.HasValue && timeoutMs > 0) {
-            Logger.Trace($"等待程序 {program.Id} 完成，超时：{timeoutMs.Value}ms");
-            if (await Task.WhenAny(task, Task.Delay(timeoutMs.Value)) != task) {
+        if (hasTimeout) {
+            Logger.Trace($"等待程序 {program.Id} 完成");
+            if (await Task.WhenAny(task, Task.Delay(timeoutMs!.Value)) != task) {
                 try {
                     if (!program.HasExited) program.Kill();
                 } catch (InvalidOperationException) { // 进程已退出，无需处理
