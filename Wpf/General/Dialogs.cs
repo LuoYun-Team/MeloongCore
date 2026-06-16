@@ -16,7 +16,7 @@ public static class Dialogs {
             FileName = defaultFileName
         };
         if (!string.IsNullOrEmpty(defaultDirectory) && DirectoryUtils.Exists(defaultDirectory!)) dialog.InitialDirectory = PathUtils.ToShortPath(defaultDirectory!);
-        if (filters != null) {
+        if (filters is not null) {
             dialog.Filter = filters.Select(f => $"{f.Display}(*.{f.Extension})|*.{f.Extension}").Join("|");
         }
 
@@ -36,10 +36,9 @@ public static class Dialogs {
 
     /// <summary>
     /// 弹出 “选择文件” 弹窗，返回用户选择的文件路径，若取消则返回空数组。
-    /// <para/> <paramref name="filter"/> 中的扩展名不加 <c>.</c>。
+    /// <para/> 若使用扩展名 <paramref name="filter"/>，则扩展名不加 <c>.</c>。
     /// </summary>
-    public static List<string> SelectFile(string title, bool multiselect, string? defaultDirectory = null, IEnumerable<(string[] Extensions, string Display)>? filter = null) {
-        var filters = filter?.ToList();
+    public static List<string> SelectFile(string title, bool multiselect, string? defaultDirectory = null, OneOf<IEnumerable<(string[] Extensions, string Display)>, string>? filter = null) {
         var dialog = new OpenFileDialog {
             AddExtension = true,
             CheckFileExists = true,
@@ -48,11 +47,15 @@ public static class Dialogs {
             ValidateNames = true
         };
         if (!string.IsNullOrEmpty(defaultDirectory) && DirectoryUtils.Exists(defaultDirectory!)) dialog.InitialDirectory = PathUtils.ToShortPath(defaultDirectory!);
-        if (filters != null) {
-            dialog.Filter = filters.Select(f => {
-                var exts = string.Join(";", f.Extensions.Select(e => $"*.{e}"));
-                return $"{f.Display}({exts})|{exts}";
-            }).Join("|");
+        if (filter is not null) {
+            if (filter.Value.Is<string>()) {
+                dialog.Filter = filter.Value.As<string>();
+            } else {
+                dialog.Filter = filter.Value.As<IEnumerable<(string[] Extensions, string Display)>>().Select(f => {
+                    var exts = string.Join(";", f.Extensions.Select(e => $"*.{e}"));
+                    return $"{f.Display}({exts})|{exts}";
+                }).Join("|");
+            }
         }
 
         Logger.Info($"选择文件弹窗：{dialog.Title}（Multiselect={dialog.Multiselect}, InitialDirectory={dialog.InitialDirectory}, Filter={dialog.Filter}）");
