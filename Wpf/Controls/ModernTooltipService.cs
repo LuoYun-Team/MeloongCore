@@ -1,4 +1,5 @@
 ﻿// 此文件主体由 AI 生成，应作为独立模块，尽量减少与其他内容的耦合。
+// 使用 ModernTooltipService 接管后，TooltipService 仅有 IsEnabled、ShowOnDisabled、InitialShowDelay 仍然有效，其他属性不再生效。
 
 using System.Windows;
 using System.Windows.Controls;
@@ -7,14 +8,15 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
+using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 
 namespace MeloongCore.Wpf;
 public static class ModernTooltipService {
 
-    // 控制是否在控件上启用现代化 Tooltip；默认为 true。
-    public static void SetIsEnabled(DependencyObject element, bool value) => element.SetValue(IsEnabledProperty, value);
-    public static bool GetIsEnabled(DependencyObject element) => (bool) element.GetValue(IsEnabledProperty);
+    // 控制是否使用现代化 Tooltip 渲染；默认为 true。是否允许显示 Tooltip 仍由 ToolTipService.IsEnabled 控制。
+    public static void SetUseModernTooltip(DependencyObject element, bool value) => element.SetValue(UseModernTooltipProperty, value);
+    public static bool GetUseModernTooltip(DependencyObject element) => (bool) element.GetValue(UseModernTooltipProperty);
 
     // 控制 Tooltip 是否跟随鼠标移动；默认为 true。
     public static void SetFollowMouse(DependencyObject element, bool value) => element.SetValue(FollowMouseProperty, value);
@@ -44,9 +46,7 @@ public static class ModernTooltipService {
             if (sender is FrameworkElement owner && ReferenceEquals(owner, currentOwner)) Close(false);
         }), true);
 
-        EventManager.RegisterClassHandler(typeof(FrameworkElement), ToolTipService.ToolTipOpeningEvent, new ToolTipEventHandler(static (sender, e) => {
-            if (sender is FrameworkElement owner && GetIsEnabled(owner) && TryGetToolTip(owner, out _, out _)) e.Handled = true;
-        }), true);
+        EventManager.RegisterClassHandler(typeof(FrameworkElement), ToolTipService.ToolTipOpeningEvent, new ToolTipEventHandler(OnToolTipOpening), true);
 
         // Loaded 负责常规路径；PreviewMouseDown 兜底处理 Init 晚于控件 Loaded 的情况。
         EventManager.RegisterClassHandler(typeof(ComboBox), FrameworkElement.LoadedEvent, new RoutedEventHandler(static (sender, _) => HookComboBoxDropDown(sender as ComboBox)), true);
@@ -56,8 +56,8 @@ public static class ModernTooltipService {
     #region 附加属性与运行状态
 
     // 附加属性
-    public static readonly DependencyProperty IsEnabledProperty = DependencyProperty.RegisterAttached(
-        "IsEnabled", typeof(bool), typeof(ModernTooltipService), new PropertyMetadata(true));
+    public static readonly DependencyProperty UseModernTooltipProperty = DependencyProperty.RegisterAttached(
+        "UseModernTooltip", typeof(bool), typeof(ModernTooltipService), new PropertyMetadata(true));
     public static readonly DependencyProperty FollowMouseProperty = DependencyProperty.RegisterAttached(
         "FollowMouse", typeof(bool), typeof(ModernTooltipService), new PropertyMetadata(true));
     private static readonly DependencyProperty IsComboBoxDropDownHookedProperty = DependencyProperty.RegisterAttached(
@@ -65,9 +65,11 @@ public static class ModernTooltipService {
 
     private static readonly DispatcherTimer openTimer = new();
     private static readonly DispatcherTimer leaveWatchTimer = new() { Interval = TimeSpan.FromMilliseconds(50) };
+    private const int leaveWatchMissLimit = 2;
 
     private static bool initialized;
     private static int animationToken;
+    private static int leaveWatchMissCount;
     private static Point lastMousePoint;
     private static Popup? popup;
     private static Border? popupCard;
@@ -88,14 +90,21 @@ public static class ModernTooltipService {
                 return;
             }
 
-            if (TryGetCursorPoint(currentOwner, out var point)) {
-                lastMousePoint = point;
-                if (GetFollowMouse(currentOwner) && popup is { IsOpen: true }) UpdatePosition(currentOwner, point);
-                if (currentOwner.IsMouseOver) leaveWatchTimer.Stop();
+            if (!TryGetMousePoint(currentOwner, out var point)) {
+                Close(true);
                 return;
             }
 
-            Close(true);
+            lastMousePoint = point;
+            if (GetFollowMouse(currentOwner) && popup is { IsOpen: true }) UpdatePosition(currentOwner, point);
+
+            if (IsMouseRelatedToOwner(currentOwner)) {
+                leaveWatchMissCount = 0;
+                if (currentOwner.IsEnabled) leaveWatchTimer.Stop();
+                return;
+            }
+
+            if (++leaveWatchMissCount >= leaveWatchMissLimit) Close(true);
         };
     }
 
@@ -104,7 +113,7 @@ public static class ModernTooltipService {
     #region 全局鼠标事件
 
     private static void OnMouseEnter(object sender, MouseEventArgs e) {
-        if (sender is not FrameworkElement owner || !GetIsEnabled(owner) || !TryGetToolTip(owner, out _, out _)) return;
+        if (sender is not FrameworkElement owner || !CanShowModernTooltip(owner) || !TryGetToolTip(owner, out _, out _)) return;
         if (ReferenceEquals(currentOwner, owner) && popup is { IsOpen: true }) {
             leaveWatchTimer.Stop();
             return;
@@ -142,33 +151,78 @@ public static class ModernTooltipService {
         owner.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => {
             if (!ReferenceEquals(owner, currentOwner)) return;
 
-            if (TryGetCursorPoint(owner, out _)) {
-                leaveWatchTimer.Start();
+            if (!TryGetMousePoint(owner, out var point)) {
+                Close(true);
                 return;
             }
 
-            Close(true);
+            lastMousePoint = point;
+            if (GetFollowMouse(owner) && popup is { IsOpen: true }) UpdatePosition(owner, point);
+
+            if (IsMouseRelatedToOwner(owner)) {
+                leaveWatchMissCount = 0;
+                leaveWatchTimer.Stop();
+                return;
+            }
+
+            leaveWatchMissCount = 0;
+            leaveWatchTimer.Start();
         }));
     }
 
-    // 确认鼠标位置
-    private static bool TryGetCursorPoint(FrameworkElement owner, out Point point) {
+    // 坐标仍在控件内只说明需要复核；最终是否保留还要看 WPF 命中或捕获是否属于该控件树。
+    private static bool TryGetMousePoint(FrameworkElement owner, out Point point) {
         point = default;
-        if (!owner.IsLoaded || !owner.IsVisible || !GetCursorPos(out var cursor)) return false;
+        if (!owner.IsLoaded || !owner.IsVisible) return false;
 
-        point = owner.PointFromScreen(new Point(cursor.X, cursor.Y));
+        point = Mouse.GetPosition(owner);
         return point.X >= 0 && point.Y >= 0 && point.X <= owner.ActualWidth && point.Y <= owner.ActualHeight;
     }
-    [DllImport("user32.dll")] private static extern bool GetCursorPos(out CursorPoint point);
-    [StructLayout(LayoutKind.Sequential)]
-    private struct CursorPoint {
-        public int X;
-        public int Y;
+
+    private static bool IsMouseRelatedToOwner(FrameworkElement owner) {
+        if (owner.IsMouseOver) return true;
+        if (!owner.IsEnabled && ToolTipService.GetShowOnDisabled(owner) && TryGetMousePoint(owner, out _)) return true;
+        if (IsInOwnerTree(Mouse.DirectlyOver as DependencyObject, owner)) return true;
+        return IsInOwnerTree(Mouse.Captured as DependencyObject, owner);
+    }
+
+    private static bool IsInOwnerTree(DependencyObject? element, DependencyObject owner) {
+        while (element is not null) {
+            if (ReferenceEquals(element, owner)) return true;
+
+            var visualParent = element is Visual or Visual3D ? VisualTreeHelper.GetParent(element) : null;
+            element = visualParent ?? LogicalTreeHelper.GetParent(element);
+        }
+
+        return false;
     }
 
     #endregion
 
     #region Tooltip 生命周期
+
+    private static bool CanShowModernTooltip(FrameworkElement owner) {
+        return GetUseModernTooltip(owner) && ToolTipService.GetIsEnabled(owner) && (owner.IsEnabled || ToolTipService.GetShowOnDisabled(owner));
+    }
+
+    private static void OnToolTipOpening(object sender, ToolTipEventArgs e) {
+        if (sender is not FrameworkElement owner || !CanShowModernTooltip(owner) || !TryGetToolTip(owner, out _, out _)) return;
+
+        e.Handled = true;
+        if (owner.IsEnabled) return;
+
+        if (!ReferenceEquals(currentOwner, owner)) HideImmediately();
+
+        currentOwner = owner;
+        openTimer.Stop();
+        leaveWatchTimer.Stop();
+
+        lastMousePoint = Mouse.GetPosition(owner);
+        Show(owner, lastMousePoint);
+
+        leaveWatchMissCount = 0;
+        leaveWatchTimer.Start();
+    }
 
     private static bool TryGetToolTip(FrameworkElement owner, out object? content, out ToolTip? sourceToolTip) {
         var raw = owner.ToolTip;
@@ -178,7 +232,7 @@ public static class ModernTooltipService {
     }
 
     private static void Show(FrameworkElement owner, Point point) {
-        if (!ReferenceEquals(owner, currentOwner) || !TryGetToolTip(owner, out var content, out var sourceToolTip)) return;
+        if (!ReferenceEquals(owner, currentOwner) || !CanShowModernTooltip(owner) || !TryGetToolTip(owner, out var content, out var sourceToolTip)) return;
 
         EnsurePopup();
 
