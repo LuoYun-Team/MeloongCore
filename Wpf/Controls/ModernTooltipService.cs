@@ -111,13 +111,26 @@ public static class ModernTooltipService {
         if (sender is not FrameworkElement owner || !ReferenceEquals(owner, currentOwner)) return;
 
         lastMousePoint = e.GetPosition(owner);
+        if (e.LeftButton == MouseButtonState.Pressed && !IsPointInside(owner, lastMousePoint)) {
+            Close(true);
+            return;
+        }
+
         if (GetFollowMouse(owner) && popup is { IsOpen: true }) UpdatePosition(owner, lastMousePoint);
     }
 
     private static void OnMouseLeave(object sender, MouseEventArgs e) {
         if (sender is not FrameworkElement owner || !ReferenceEquals(owner, currentOwner)) return;
 
+        // 避免 Tooltip 在文本区域长按左键时自动收回
+        var point = e.GetPosition(owner);
+        if (e.LeftButton == MouseButtonState.Pressed && IsPointInside(owner, point)) return;
+
         Close(true);
+    }
+
+    private static bool IsPointInside(FrameworkElement owner, Point point) {
+        return point.X >= 0 && point.Y >= 0 && point.X <= owner.ActualWidth && point.Y <= owner.ActualHeight;
     }
 
     #endregion
