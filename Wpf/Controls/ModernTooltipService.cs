@@ -8,7 +8,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
-using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 
 namespace MeloongCore.Wpf;
@@ -26,7 +25,7 @@ public static class ModernTooltipService {
     private static readonly TimeSpan animationTime = TimeSpan.FromMilliseconds(70);
     private static readonly int shadowRadius = 18;
     private static readonly float shadowOpacity = 0.15f;
-    private static readonly Thickness contentMargin = new(12, 11, 12, 8.5);
+    private static readonly Thickness contentMargin = new(12, 11, 12, 8);
     private static readonly Brush backgroundBrush = new SolidColorBrush(Colors.White);
     private static readonly Brush borderBrush = new SolidColorBrush(Color.FromRgb(0xD6, 0xD6, 0xD6));
     private static readonly Brush foregroundBrush = new SolidColorBrush(Color.FromRgb(0x52, 0x52, 0x52));
@@ -64,12 +63,9 @@ public static class ModernTooltipService {
         "IsComboBoxDropDownHooked", typeof(bool), typeof(ModernTooltipService), new PropertyMetadata(false));
 
     private static readonly DispatcherTimer openTimer = new();
-    private static readonly DispatcherTimer leaveWatchTimer = new() { Interval = TimeSpan.FromMilliseconds(50) };
-    private const int leaveWatchMissLimit = 2;
 
     private static bool initialized;
     private static int animationToken;
-    private static int leaveWatchMissCount;
     private static Point lastMousePoint;
     private static Popup? popup;
     private static Border? popupCard;
@@ -83,29 +79,6 @@ public static class ModernTooltipService {
             openTimer.Stop();
             if (currentOwner is not null) Show(currentOwner, lastMousePoint);
         };
-
-        leaveWatchTimer.Tick += (_, _) => {
-            if (currentOwner is null) {
-                leaveWatchTimer.Stop();
-                return;
-            }
-
-            if (!TryGetMousePoint(currentOwner, out var point)) {
-                Close(true);
-                return;
-            }
-
-            lastMousePoint = point;
-            if (GetFollowMouse(currentOwner) && popup is { IsOpen: true }) UpdatePosition(currentOwner, point);
-
-            if (IsMouseRelatedToOwner(currentOwner)) {
-                leaveWatchMissCount = 0;
-                if (currentOwner.IsEnabled) leaveWatchTimer.Stop();
-                return;
-            }
-
-            if (++leaveWatchMissCount >= leaveWatchMissLimit) Close(true);
-        };
     }
 
     #endregion
@@ -115,7 +88,6 @@ public static class ModernTooltipService {
     private static void OnMouseEnter(object sender, MouseEventArgs e) {
         if (sender is not FrameworkElement owner || !CanShowModernTooltip(owner) || !TryGetToolTip(owner, out _, out _)) return;
         if (ReferenceEquals(currentOwner, owner) && popup is { IsOpen: true }) {
-            leaveWatchTimer.Stop();
             return;
         }
 
@@ -125,7 +97,6 @@ public static class ModernTooltipService {
         currentOwner = owner;
         lastMousePoint = e.GetPosition(owner);
         openTimer.Stop();
-        leaveWatchTimer.Stop();
 
         var delay = Math.Max(0, ToolTipService.GetInitialShowDelay(owner));
         if (delay == 0) {
@@ -146,55 +117,7 @@ public static class ModernTooltipService {
     private static void OnMouseLeave(object sender, MouseEventArgs e) {
         if (sender is not FrameworkElement owner || !ReferenceEquals(owner, currentOwner)) return;
 
-        // TextBox 点击时，内部元素可能短暂捕获鼠标并触发一次假的 MouseLeave。
-        // 若确认鼠标还在控件内，则短暂轮询；避免 WPF 不再补发真正 MouseLeave 时 Tooltip 残留。
-        owner.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => {
-            if (!ReferenceEquals(owner, currentOwner)) return;
-
-            if (!TryGetMousePoint(owner, out var point)) {
-                Close(true);
-                return;
-            }
-
-            lastMousePoint = point;
-            if (GetFollowMouse(owner) && popup is { IsOpen: true }) UpdatePosition(owner, point);
-
-            if (IsMouseRelatedToOwner(owner)) {
-                leaveWatchMissCount = 0;
-                leaveWatchTimer.Stop();
-                return;
-            }
-
-            leaveWatchMissCount = 0;
-            leaveWatchTimer.Start();
-        }));
-    }
-
-    // 坐标仍在控件内只说明需要复核；最终是否保留还要看 WPF 命中或捕获是否属于该控件树。
-    private static bool TryGetMousePoint(FrameworkElement owner, out Point point) {
-        point = default;
-        if (!owner.IsLoaded || !owner.IsVisible) return false;
-
-        point = Mouse.GetPosition(owner);
-        return point.X >= 0 && point.Y >= 0 && point.X <= owner.ActualWidth && point.Y <= owner.ActualHeight;
-    }
-
-    private static bool IsMouseRelatedToOwner(FrameworkElement owner) {
-        if (owner.IsMouseOver) return true;
-        if (!owner.IsEnabled && ToolTipService.GetShowOnDisabled(owner) && TryGetMousePoint(owner, out _)) return true;
-        if (IsInOwnerTree(Mouse.DirectlyOver as DependencyObject, owner)) return true;
-        return IsInOwnerTree(Mouse.Captured as DependencyObject, owner);
-    }
-
-    private static bool IsInOwnerTree(DependencyObject? element, DependencyObject owner) {
-        while (element is not null) {
-            if (ReferenceEquals(element, owner)) return true;
-
-            var visualParent = element is Visual or Visual3D ? VisualTreeHelper.GetParent(element) : null;
-            element = visualParent ?? LogicalTreeHelper.GetParent(element);
-        }
-
-        return false;
+        Close(true);
     }
 
     #endregion
@@ -215,13 +138,9 @@ public static class ModernTooltipService {
 
         currentOwner = owner;
         openTimer.Stop();
-        leaveWatchTimer.Stop();
 
         lastMousePoint = Mouse.GetPosition(owner);
         Show(owner, lastMousePoint);
-
-        leaveWatchMissCount = 0;
-        leaveWatchTimer.Start();
     }
 
     private static bool TryGetToolTip(FrameworkElement owner, out object? content, out ToolTip? sourceToolTip) {
@@ -269,7 +188,6 @@ public static class ModernTooltipService {
 
     private static void Close(bool animated) {
         openTimer.Stop();
-        leaveWatchTimer.Stop();
         currentOwner = null;
 
         if (popup is null || popupCard is null) return;
@@ -287,7 +205,6 @@ public static class ModernTooltipService {
 
     private static void HideImmediately() {
         openTimer.Stop();
-        leaveWatchTimer.Stop();
         animationToken++;
 
         if (popup is not null) popup.IsOpen = false;
