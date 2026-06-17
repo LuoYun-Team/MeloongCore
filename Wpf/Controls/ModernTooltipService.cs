@@ -8,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
+using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 
 namespace MeloongCore.Wpf;
@@ -86,31 +87,18 @@ public static class ModernTooltipService {
     #region 全局鼠标事件
 
     private static void OnMouseEnter(object sender, MouseEventArgs e) {
-        if (sender is not FrameworkElement owner || !CanShowModernTooltip(owner) || !TryGetToolTip(owner, out _, out _)) return;
-        if (ReferenceEquals(currentOwner, owner) && popup is { IsOpen: true }) {
-            return;
-        }
+        if (sender is not FrameworkElement reference) return;
 
-        if (owner is ComboBox comboBox) HookComboBoxDropDown(comboBox);
-        if (!ReferenceEquals(currentOwner, owner)) HideImmediately();
-
-        currentOwner = owner;
-        lastMousePoint = e.GetPosition(owner);
-        openTimer.Stop();
-
-        var delay = Math.Max(0, ToolTipService.GetInitialShowDelay(owner));
-        if (delay == 0) {
-            Show(owner, lastMousePoint);
-        } else {
-            openTimer.Interval = TimeSpan.FromMilliseconds(delay);
-            openTimer.Start();
-        }
+        reference.Dispatcher.BeginInvoke(new Action(() => RefreshCurrentOwner(reference)), DispatcherPriority.Input);
     }
 
     private static void OnMouseMove(object sender, MouseEventArgs e) {
-        if (sender is not FrameworkElement owner || !ReferenceEquals(owner, currentOwner)) return;
+        if (sender is not FrameworkElement reference) return;
 
-        lastMousePoint = e.GetPosition(owner);
+        RefreshCurrentOwner(reference);
+        if (currentOwner is not FrameworkElement owner) return;
+
+        lastMousePoint = Mouse.GetPosition(owner);
         if (e.LeftButton == MouseButtonState.Pressed && !IsPointInside(owner, lastMousePoint)) {
             Close(true);
             return;
@@ -125,6 +113,12 @@ public static class ModernTooltipService {
         // 避免 Tooltip 在文本区域长按左键时自动收回
         var point = e.GetPosition(owner);
         if (e.LeftButton == MouseButtonState.Pressed && IsPointInside(owner, point)) return;
+
+        var nextOwner = FindCurrentTooltipOwner(owner);
+        if (nextOwner is not null && !ReferenceEquals(nextOwner, owner)) {
+            BeginShow(nextOwner, Mouse.GetPosition(nextOwner));
+            return;
+        }
 
         Close(true);
     }
@@ -163,10 +157,83 @@ public static class ModernTooltipService {
         return content is not null && (content is not string text || text.Length > 0);
     }
 
+    private static void RefreshCurrentOwner(FrameworkElement reference) {
+        var owner = FindCurrentTooltipOwner(reference);
+        if (owner is null) return;
+
+        BeginShow(owner, Mouse.GetPosition(owner));
+    }
+
+    private static FrameworkElement? FindCurrentTooltipOwner(FrameworkElement reference) {
+        var owner = FindTooltipOwnerInAncestors(Mouse.DirectlyOver as DependencyObject);
+        if (owner is not null) return owner;
+
+        return reference.InputHitTest(Mouse.GetPosition(reference)) is DependencyObject hit
+            ? FindTooltipOwnerInAncestors(hit)
+            : null;
+    }
+
+    private static FrameworkElement? FindTooltipOwnerInAncestors(DependencyObject? start) {
+        for (var current = start; current is not null;) {
+            if (current is FrameworkElement owner && CanShowModernTooltip(owner) && TryGetToolTip(owner, out _, out _)) {
+                return owner;
+            }
+
+            DependencyObject? parent = null;
+            if (current is Visual or Visual3D) parent = VisualTreeHelper.GetParent(current);
+
+            current = parent ?? LogicalTreeHelper.GetParent(current);
+        }
+
+        return null;
+    }
+
+    private static void BeginShow(FrameworkElement owner, Point point) {
+        if (!CanShowModernTooltip(owner) || !TryGetToolTip(owner, out _, out _)) return;
+
+        if (owner is ComboBox comboBox) HookComboBoxDropDown(comboBox);
+        if (ReferenceEquals(currentOwner, owner)) {
+            lastMousePoint = point;
+            if (popup is not { IsOpen: true } && !openTimer.IsEnabled) StartOpenTimer(owner);
+            return;
+        }
+
+        HideImmediately();
+        currentOwner = owner;
+        lastMousePoint = point;
+        StartOpenTimer(owner);
+    }
+
+    private static void StartOpenTimer(FrameworkElement owner) {
+        openTimer.Stop();
+
+        var delay = Math.Max(0, ToolTipService.GetInitialShowDelay(owner));
+        if (delay == 0) {
+            Show(owner, lastMousePoint);
+        } else {
+            openTimer.Interval = TimeSpan.FromMilliseconds(delay);
+            openTimer.Start();
+        }
+    }
+
     private static void Show(FrameworkElement owner, Point point) {
         if (!ReferenceEquals(owner, currentOwner) || !CanShowModernTooltip(owner) || !TryGetToolTip(owner, out var content, out var sourceToolTip)) return;
 
-        EnsurePopup();
+        if (popup is null) {
+            popupScale = new ScaleTransform(0.97, 0.97);
+            popupCard = new Border { 
+                Background = backgroundBrush, BorderBrush = borderBrush, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8), 
+                MaxWidth = 700, SnapsToDevicePixels = true, UseLayoutRounding = true, 
+                RenderTransform = popupScale, RenderTransformOrigin = new Point(0, 0), 
+                Effect = new DropShadowEffect { Opacity = shadowOpacity, BlurRadius = shadowRadius, ShadowDepth = 0, Color = Colors.Black } };
+
+            var root = new Grid { Margin = new Thickness(shadowRadius + 1), SnapsToDevicePixels = true, UseLayoutRounding = true };
+            root.Children.Add(popupCard);
+
+            popup = new Popup { 
+                AllowsTransparency = true, IsHitTestVisible = false, StaysOpen = true, PopupAnimation = PopupAnimation.None, 
+                Placement = PlacementMode.Relative, Child = root };
+        }
 
         popup!.PlacementTarget = owner;
         popupCard!.DataContext = sourceToolTip?.DataContext ?? owner.DataContext;
@@ -245,24 +312,6 @@ public static class ModernTooltipService {
     #endregion
 
     #region Popup 创建、定位与动画
-
-    private static void EnsurePopup() {
-        if (popup is not null) return;
-
-        popupScale = new ScaleTransform(0.97, 0.97);
-        popupCard = new Border { 
-            Background = backgroundBrush, BorderBrush = borderBrush, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8), 
-            MaxWidth = 700, SnapsToDevicePixels = true, UseLayoutRounding = true, 
-            RenderTransform = popupScale, RenderTransformOrigin = new Point(0, 0), 
-            Effect = new DropShadowEffect { Opacity = shadowOpacity, BlurRadius = shadowRadius, ShadowDepth = 0, Color = Colors.Black } };
-
-        var root = new Grid { Margin = new Thickness(shadowRadius + 1), SnapsToDevicePixels = true, UseLayoutRounding = true };
-        root.Children.Add(popupCard);
-
-        popup = new Popup { 
-            AllowsTransparency = true, IsHitTestVisible = false, StaysOpen = true, PopupAnimation = PopupAnimation.None, 
-            Placement = PlacementMode.Relative, Child = root };
-    }
 
     private static void UpdatePosition(FrameworkElement owner, Point point) {
         popup!.PlacementTarget = owner;
