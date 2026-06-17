@@ -20,7 +20,7 @@ public class DirectoryUtilsTest : TestWithFolder {
         await Assert.That(FileUtils.ReadAsString(Path.Combine(dest, "a.txt"))).IsEqualTo("aaa");
         await Assert.That(FileUtils.ReadAsString(Path.Combine(src, "sub", "b file.txt"))).IsEqualTo("bbb");
         await Assert.That(FileUtils.ReadAsString(Path.Combine(dest, "sub", "b file.txt"))).IsEqualTo("bbb");
-        await Assert.That(DirectoryUtils.GetDirectories(Path.Combine(tempFolder))).Contains(dest); // 目标文件夹名
+        await Assert.That(DirectoryUtils.EnumerateDirectories(tempFolder, true)).Contains(dest); // 目标文件夹名
     }
 
     [Test]
@@ -38,8 +38,8 @@ public class DirectoryUtilsTest : TestWithFolder {
 
         await Assert.That(FileUtils.ReadAsString(Path.Combine(dest, "a.txt"))).IsEqualTo("aaa");
         await Assert.That(FileUtils.ReadAsString(Path.Combine(dest, "sub", "b file.txt"))).IsEqualTo("bbb");
-        if (src != dest) await Assert.That(DirectoryUtils.GetDirectories(Path.Combine(tempFolder))).DoesNotContain(src);
-        await Assert.That(DirectoryUtils.GetDirectories(Path.Combine(tempFolder))).Contains(dest); // 目标文件夹名
+        if (src != dest) await Assert.That(DirectoryUtils.EnumerateDirectories(tempFolder, true)).DoesNotContain(src);
+        await Assert.That(DirectoryUtils.EnumerateDirectories(tempFolder, true)).Contains(dest); // 目标文件夹名
     }
 
     [Test]

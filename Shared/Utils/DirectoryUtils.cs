@@ -36,9 +36,9 @@ public static class DirectoryUtils {
     /// 返回指定路径下的所有文件，不以 \\?\ 开头。
     /// 如果文件夹不存在，返回空列表。
     /// </summary>
-    public static IEnumerable<string> GetFiles(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
+    public static IEnumerable<string> EnumerateFiles(string path, bool includeSubDirectory = false, string searchPattern = "*") {
         if (!DirectoryUtils.Exists(path)) return [];
-        return Directory.EnumerateFiles(PathUtils.ForApi(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories).
+        return Directory.EnumerateFiles(PathUtils.ForApi(path), searchPattern, includeSubDirectory ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly).
             Select(PathUtils.RemoveExtendedPrefix);
     }
 
@@ -46,9 +46,9 @@ public static class DirectoryUtils {
     /// 返回指定路径下的所有文件夹，不以分隔符结尾，不以 \\?\ 开头。
     /// 如果文件夹不存在，返回空列表。
     /// </summary>
-    public static IEnumerable<string> GetDirectories(string path, bool topDirectoryOnly = false, string searchPattern = "*") {
+    public static IEnumerable<string> EnumerateDirectories(string path, bool includeSubDirectory = false, string searchPattern = "*") {
         if (!DirectoryUtils.Exists(path)) return [];
-        return Directory.EnumerateDirectories(PathUtils.ForApi(path), searchPattern, topDirectoryOnly ? SearchOption.TopDirectoryOnly : SearchOption.AllDirectories).
+        return Directory.EnumerateDirectories(PathUtils.ForApi(path), searchPattern, includeSubDirectory ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly).
             Select(PathUtils.RemoveExtendedPrefix);
     }
 
@@ -78,7 +78,7 @@ public static class DirectoryUtils {
         } else {
             // 实际的复制
             Logger.Trace($"复制文件夹：{sourceFolder} → {destFolder}");
-            foreach (var file in DirectoryUtils.GetFiles(sourceFolder).ToList()) FileUtils.Copy(file, file.Replace(sourceFolder, destFolder));
+            foreach (var file in DirectoryUtils.EnumerateFiles(sourceFolder, includeSubDirectory: true).ToList()) FileUtils.Copy(file, file.Replace(sourceFolder, destFolder));
         }
     }
 
@@ -142,8 +142,8 @@ public static class DirectoryUtils {
         static void DeleteInternal(string folder) {
             try {
                 folder = PathUtils.ForApi(folder);
-                foreach (string filePath in DirectoryUtils.GetFiles(folder, true)) FileUtils.Delete(filePath); // 删除文件
-                foreach (string str in DirectoryUtils.GetDirectories(folder, true)) DeleteInternal(str); // 递归删除子文件夹
+                foreach (string filePath in DirectoryUtils.EnumerateFiles(folder)) FileUtils.Delete(filePath); // 删除文件
+                foreach (string str in DirectoryUtils.EnumerateDirectories(folder)) DeleteInternal(str); // 递归删除子文件夹
                 ResilientUtils.RetryOn<IOException>(() => {
                     FileUtils.SetReadOnly(folder, false);
                     Directory.Delete(folder, true);

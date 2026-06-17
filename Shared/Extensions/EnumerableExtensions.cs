@@ -329,6 +329,12 @@ public static class EnumerableExtensions {
     }
 
     /// <summary>
+    /// 从集合中移除指定元素。
+    /// </summary>
+    public static IEnumerable<T> Except<T>(this IEnumerable<T> source, T element)
+        => source.Except([element]);
+
+    /// <summary>
     /// 判断集合是否有且仅有一个元素。
     /// 在输入 null 时返回 false。
     /// </summary>
