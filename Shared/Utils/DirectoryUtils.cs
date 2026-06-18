@@ -36,9 +36,9 @@ public static class DirectoryUtils {
     /// 返回指定路径下的所有文件，不以 \\?\ 开头。
     /// 如果文件夹不存在，返回空列表。
     /// </summary>
-    public static IEnumerable<string> EnumerateFiles(string path, bool includeSubDirectory = false, string searchPattern = "*") {
+    public static IEnumerable<string> EnumerateFiles(string path, bool includeSubDirectories = false, string searchPattern = "*") {
         if (!DirectoryUtils.Exists(path)) return [];
-        return Directory.EnumerateFiles(PathUtils.ForApi(path), searchPattern, includeSubDirectory ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly).
+        return Directory.EnumerateFiles(PathUtils.ForApi(path), searchPattern, includeSubDirectories ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly).
             Select(PathUtils.RemoveExtendedPrefix);
     }
 
@@ -46,9 +46,9 @@ public static class DirectoryUtils {
     /// 返回指定路径下的所有文件夹，不以分隔符结尾，不以 \\?\ 开头。
     /// 如果文件夹不存在，返回空列表。
     /// </summary>
-    public static IEnumerable<string> EnumerateDirectories(string path, bool includeSubDirectory = false, string searchPattern = "*") {
+    public static IEnumerable<string> EnumerateDirectories(string path, bool includeSubDirectories = false, string searchPattern = "*") {
         if (!DirectoryUtils.Exists(path)) return [];
-        return Directory.EnumerateDirectories(PathUtils.ForApi(path), searchPattern, includeSubDirectory ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly).
+        return Directory.EnumerateDirectories(PathUtils.ForApi(path), searchPattern, includeSubDirectories ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly).
             Select(PathUtils.RemoveExtendedPrefix);
     }
 
@@ -78,7 +78,7 @@ public static class DirectoryUtils {
         } else {
             // 实际的复制
             Logger.Trace($"复制文件夹：{sourceFolder} → {destFolder}");
-            foreach (var file in DirectoryUtils.EnumerateFiles(sourceFolder, includeSubDirectory: true).ToList()) FileUtils.Copy(file, file.Replace(sourceFolder, destFolder));
+            foreach (var file in DirectoryUtils.EnumerateFiles(sourceFolder, includeSubDirectories: true).ToList()) FileUtils.Copy(file, file.Replace(sourceFolder, destFolder));
         }
     }
 
