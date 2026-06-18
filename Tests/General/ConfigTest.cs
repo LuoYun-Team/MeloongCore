@@ -7,7 +7,7 @@ public class ConfigTest : TestWithFolder {
         var filePath = Path.Combine(tempFolder, "config.json");
         var provider = new JsonConfigProvider(filePath);
 
-        provider.Set("token", "plain token", encrypted: true);
+        provider.SetToCache("token", "plain token", encrypted: true);
         provider.Save();
 
         await Assert.That(FileUtils.ReadAsString(filePath).Contains("plain token")).IsFalse();
@@ -20,12 +20,12 @@ public class ConfigTest : TestWithFolder {
         var filePath = Path.Combine(tempFolder, "config.json");
         var provider = new JsonConfigProvider(filePath);
 
-        provider.Set("token", "old token", encrypted: true);
+        provider.SetToCache("token", "old token", encrypted: true);
         provider.Save();
         await Assert.That(provider.Read("token", encrypted: true)).IsEqualTo("old token");
 
         var secondProvider = new JsonConfigProvider(filePath);
-        secondProvider.Set("token", "new token", encrypted: true);
+        secondProvider.SetToCache("token", "new token", encrypted: true);
         secondProvider.Save();
         provider.ClearCache();
 
