@@ -173,7 +173,7 @@ public static class DirectoryUtils {
             throw new UnauthorizedAccessException($"不应操作文件夹：{folder}");
     }
     private static readonly Lazy<HashSet<string>> criticalFolders = new(() => new(new[] {
-        PathUtils.CurrentFolder,
+        Paths.Base,
         Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
         Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
         Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),

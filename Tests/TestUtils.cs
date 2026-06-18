@@ -7,7 +7,7 @@
 public abstract class TestBase {
 
     public TestBase() {
-        MeloongCore.Main.Init(new TestLogger());
+        MeloongCore.Main.Init("MeloongCoreTest", new TestLogger());
     }
     private class TestLogger : BaseLogger {
         public override void HandleBehavior(string? rawMessage, string formattedMessage, LogBehavior behavior, Exception? ex)
@@ -40,7 +40,7 @@ public abstract class TestWithFolder : TestBase {
     /// 输出指定的测试用文件，返回文件路径。
     /// </summary>
     public string GetTestFile(string fileName) {
-        var sourceFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestFiles", GetType().Name.Replace("Test", ""), fileName);
+        var sourceFilePath = Path.Combine(Paths.Base, "TestFiles", GetType().Name.Replace("Test", ""), fileName);
         var distPath = Path.Combine(tempFolder, PathUtils.GetLastPart(sourceFilePath));
         FileUtils.Copy(sourceFilePath, distPath);
         return distPath;

@@ -173,13 +173,27 @@ public static class PathUtils {
 
     #endregion
 
-    #region 常用路径
+}
 
+/// <summary>
+/// 常用路径合集。
+/// 所有路径均以分隔符结尾。
+/// </summary>
+public static class Paths {
     /// <summary>
-    /// 程序可执行文件的所在文件夹，以 \ 结尾。
+    /// 可执行文件所在的文件夹。
     /// </summary>
-    public static string CurrentFolder => PathUtils.AddSlashSuffix(AppDomain.CurrentDomain.BaseDirectory);
-
-    #endregion
-
+    public static string Base => PathUtils.AddSlashSuffix(AppContext.BaseDirectory);
+    /// <summary>
+    /// 可执行文件所在的文件夹中，名为 <see cref="Main.AppName"/> 的子文件夹。
+    /// </summary>
+    public static string BaseThenName => PathUtils.AddSlashSuffix(Base + Main.AppName);
+    /// <summary>
+    /// %AppData% 文件夹。
+    /// </summary>
+    public static string AppData => PathUtils.AddSlashSuffix(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
+    /// <summary>
+    /// %AppData% 文件夹中，名为 <see cref="Main.AppName"/> 的子文件夹。
+    /// </summary>
+    public static string AppDataThenName => PathUtils.AddSlashSuffix(AppData + Main.AppName);
 }

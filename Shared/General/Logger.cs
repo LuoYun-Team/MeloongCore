@@ -291,7 +291,7 @@ public class BaseLogger {
 /// </summary>
 public class FileLogger : BaseLogger, IDisposable {
 
-    public string logFolder = Path.Combine(PathUtils.CurrentFolder, "logs");
+    public string logFolder = Path.Combine(Paths.Base, "logs");
     public string fileNamePrefix = "Log";
     public string fileNameSuffix = ".txt";
     private StreamWriter? writer;
