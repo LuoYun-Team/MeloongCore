@@ -7,7 +7,8 @@
 public abstract class TestBase {
 
     public TestBase() {
-        MeloongCore.Main.Init("MeloongCoreTest", new TestLogger());
+        MeloongCore.Main.Init("MeloongCoreTest");
+        Logger.Instance = new TestLogger();
     }
     private class TestLogger : BaseLogger {
         public override void HandleBehavior(string? rawMessage, string formattedMessage, LogBehavior behavior, Exception? ex)
