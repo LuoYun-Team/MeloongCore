@@ -1,6 +1,9 @@
 ﻿namespace MeloongCore;
 
 public interface IConfigProvider {
+    /// <summary>
+    /// 写入加密后的原始数据。
+    /// </summary>
     void Write(string key, JToken value);
     JToken? Read(string key, JToken? defaultValue = null);
     bool HasValue(string key);
@@ -31,27 +34,26 @@ public static class Configs {
     public static readonly JsonConfigProvider AppData = new(Path.Combine(Paths.AppDataThenName, "config.json"));
 
     /// <summary>
-    /// 从 secret.json 中读取特定密钥，如果不存在则抛出异常。
+    /// 从 secret.json 中读取特定密钥，如果未找到对应密钥则抛出异常。
     /// </summary>
     public static string GetSecret(string key) => secret.Read(key)?.ToString() ?? throw new KeyNotFoundException($"Secret not found: {key}");
     private static readonly JsonConfigProvider secret = new(Path.Combine(Paths.AppData, "secret.json"));
 }
 
 public class ConfigEntry<T>(string key, T? defaultValue, IConfigProvider? defaultProvider = null, bool encrypted = false) {
-    private readonly IConfigProvider defaultProvider = defaultProvider ?? Configs.AppData;
-    public string Key = key;
-    public bool Encrypted = encrypted;
-    public T? DefaultValue = defaultValue;
-
     /// <summary>
     /// 当设置项的值实际被改变时触发，参数为新值。
     /// </summary>
     public event Action<T?>? OnChanged;
 
-    public bool HasValue(IConfigProvider? provider = null) 
-        => (provider ?? defaultProvider).HasValue(Key);
-    public void Remove(IConfigProvider? provider = null) 
-        => (provider ?? defaultProvider).Remove(Key);
-    public void Save(IConfigProvider? provider = null) 
-        => (provider ?? defaultProvider).Save();
+
+    private IConfigProvider GetProvider(IConfigProvider? provider) 
+        => provider ?? defaultProvider ?? Configs.AppData;
+
+    public bool HasValue(IConfigProvider? provider = null)
+        => GetProvider(provider).HasValue(key);
+    public void Remove(IConfigProvider? provider = null)
+        => GetProvider(provider).Remove(key);
+    public void Save(IConfigProvider? provider = null)
+        => GetProvider(provider).Save();
 }

@@ -58,10 +58,71 @@ public static class CryptographyUtils {
 
     #endregion
 
-    #region ECDSA
+    #region AES 对称加解密
+
+    private const byte AesDataVersion = 1;
 
     /// <summary>
-    /// 进行 ECDSA P-256 非对称加密签名验证。
+    /// 使用 AES-256-CBC 对称加密字符串。
+    /// </summary>
+    /// <returns>加密后的 Base64 字符串。</returns>
+    public static string AesEncrypt(string sourceString, string key = "EncryptKey") {
+        byte[] iv = new byte[16];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(iv);
+        byte[] cipherBytes;
+        using var sha256 = SHA256.Create();
+        using Aes aes = Aes.Create();
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
+        using ICryptoTransform encryptor = aes.CreateEncryptor(sha256.ComputeHash(Encoding.UTF8.GetBytes(key)), iv);
+        using var ms = new MemoryStream();
+        using var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write);
+        byte[] sourceBytes = Encoding.UTF8.GetBytes(sourceString);
+        cs.Write(sourceBytes, 0, sourceBytes.Length);
+        cs.FlushFinalBlock();
+        cipherBytes = ms.ToArray();
+        byte[] encryptedBytes = new byte[1 + iv.Length + cipherBytes.Length];
+        encryptedBytes[0] = AesDataVersion;
+        Array.Copy(iv, 0, encryptedBytes, 1, iv.Length);
+        Array.Copy(cipherBytes, 0, encryptedBytes, 1 + iv.Length, cipherBytes.Length);
+        return Convert.ToBase64String(encryptedBytes);
+    }
+
+    /// <summary>
+    /// 使用 AES-256-CBC 对称解密字符串。
+    /// 如果密钥错误或数据格式有误，则抛出 <see cref="CryptographicException"/>。
+    /// </summary>
+    public static string AesDecrypt(string encryptedString, string key = "EncryptKey") {
+        byte[] encryptedBytes;
+        try {
+            encryptedBytes = Convert.FromBase64String(encryptedString);
+        } catch (FormatException ex) {
+            throw new CryptographicException($"数据不是一个有效的 Base64 字符串（{encryptedString}）", ex);
+        }
+        int cipherSize = encryptedBytes.Length - 1 - 16;
+        if (encryptedBytes.Length < 1 + 16 + 16 || encryptedBytes[0] != AesDataVersion || cipherSize % 16 != 0)
+            throw new CryptographicException($"对称加密数据长度有误（{encryptedString}）");
+        byte[] iv = new byte[16];
+        Array.Copy(encryptedBytes, 1, iv, 0, iv.Length);
+        using var sha256 = SHA256.Create();
+        using Aes aes = Aes.Create();
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
+        using ICryptoTransform decryptor = aes.CreateDecryptor(sha256.ComputeHash(Encoding.UTF8.GetBytes(key)), iv);
+        using var ms = new MemoryStream(encryptedBytes, 1 + iv.Length, cipherSize);
+        using var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read);
+        using var output = new MemoryStream();
+        cs.CopyTo(output);
+        return Encoding.UTF8.GetString(output.ToArray());
+    }
+
+    #endregion
+
+    #region ECDSA 非对称加密签名
+
+    /// <summary>
+    /// 使用 ECDSA 算法，验证一个字符串的签名是否使用私钥生成。
     /// 如果验证失败则抛出 <see cref="CryptographicException"/>。
     /// </summary>
     public static void EcdsaVerify(string sourceString, string sign, string publicKey) {

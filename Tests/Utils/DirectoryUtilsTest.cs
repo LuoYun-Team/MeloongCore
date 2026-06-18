@@ -73,7 +73,7 @@ public class DirectoryUtilsTest : TestWithFolder {
 
     [Test]
     public void 剪切_安全检查() 
-        => Assert.Throws<UnauthorizedAccessException>(() => DirectoryUtils.Move(PathUtils.CurrentFolder, Path.Combine(tempFolder, "SafetyCheckDest")));
+        => Assert.Throws<UnauthorizedAccessException>(() => DirectoryUtils.Move(Paths.Base, Path.Combine(tempFolder, "SafetyCheckDest")));
 
     #endregion
 
