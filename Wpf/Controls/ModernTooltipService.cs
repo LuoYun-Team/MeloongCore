@@ -118,6 +118,7 @@ public static class ModernTooltipService {
 
         // 长按、拖选时鼠标会短暂离开元素边界；此时收回 Tooltip 会造成明显闪烁。
         if (IsAnyMouseButtonPressed()) return;
+        if (!owner.IsEnabled && ToolTipService.GetShowOnDisabled(owner) && IsPointInside(owner, Mouse.GetPosition(owner))) return;
 
         var nextOwner = FindCurrentTooltipOwner(owner);
         if (nextOwner is not null && !ReferenceEquals(nextOwner, owner)) {
@@ -168,6 +169,12 @@ public static class ModernTooltipService {
 
     private static void RefreshCurrentOwner(FrameworkElement reference) {
         var owner = FindCurrentTooltipOwner(reference);
+        if (currentOwner is { IsEnabled: false } disabledOwner &&
+            ToolTipService.GetShowOnDisabled(disabledOwner) &&
+            IsPointInside(disabledOwner, Mouse.GetPosition(disabledOwner))) {
+            return;
+        }
+
         if (ShouldSuppressTooltip(owner)) {
             // 鼠标捕获仍在当前拥有者分支内时，保留现有气泡，避免拖选或按压时闪烁。
             if (currentOwner is not null &&
