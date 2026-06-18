@@ -65,57 +65,72 @@ public static class CryptographyUtils {
     /// <summary>
     /// 使用 AES-256-CBC 对称加密字符串。
     /// </summary>
-    /// <returns>加密后的 Base64 字符串。</returns>
-    public static string AesEncrypt(string sourceString, string key = "EncryptKey") {
-        byte[] iv = new byte[16];
+    /// <returns>加密后的 Base64 字符串。若输入为空字符串或 null，则原样返回空字符串或 null。</returns>
+    public static string? AesEncrypt(string? sourceString, string key = "EncryptKey") {
+        if (string.IsNullOrEmpty(sourceString)) return sourceString; // 原样返回空字符串或 null
+        byte[] iv = new byte[AesIvSize];
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(iv);
         byte[] cipherBytes;
         using var sha256 = SHA256.Create();
+        byte[] aesKey = sha256.ComputeHash(Encoding.UTF8.GetBytes(key));
+        byte[] hmacKey = sha256.ComputeHash(Encoding.UTF8.GetBytes("AES-HMAC|" + key));
         using Aes aes = Aes.Create();
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.PKCS7;
-        using ICryptoTransform encryptor = aes.CreateEncryptor(sha256.ComputeHash(Encoding.UTF8.GetBytes(key)), iv);
-        using var ms = new MemoryStream();
-        using var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write);
+        using ICryptoTransform encryptor = aes.CreateEncryptor(aesKey, iv);
         byte[] sourceBytes = Encoding.UTF8.GetBytes(sourceString);
-        cs.Write(sourceBytes, 0, sourceBytes.Length);
-        cs.FlushFinalBlock();
-        cipherBytes = ms.ToArray();
-        byte[] encryptedBytes = new byte[1 + iv.Length + cipherBytes.Length];
+        cipherBytes = encryptor.TransformFinalBlock(sourceBytes, 0, sourceBytes.Length);
+        // 格式：版本 [1 字节] | IV [16 字节] | 密文 [N 字节] | 校验 [4 字节]
+        byte[] encryptedBytes = new byte[1 + iv.Length + cipherBytes.Length + AesCheckSize];
         encryptedBytes[0] = AesDataVersion;
         Array.Copy(iv, 0, encryptedBytes, 1, iv.Length);
         Array.Copy(cipherBytes, 0, encryptedBytes, 1 + iv.Length, cipherBytes.Length);
+        using var hmac = new HMACSHA256(hmacKey);
+        byte[] checkBytes = hmac.ComputeHash(encryptedBytes, 0, 1 + iv.Length + cipherBytes.Length);
+        Array.Copy(checkBytes, 0, encryptedBytes, 1 + iv.Length + cipherBytes.Length, AesCheckSize);
         return Convert.ToBase64String(encryptedBytes);
     }
 
     /// <summary>
     /// 使用 AES-256-CBC 对称解密字符串。
-    /// 如果密钥错误或数据格式有误，则抛出 <see cref="CryptographicException"/>。
+    /// 如果输入数据有误，则确保会抛出 <see cref="CryptographicException"/>。
     /// </summary>
-    public static string AesDecrypt(string encryptedString, string key = "EncryptKey") {
+    /// <returns>解密后的字符串。若输入为空字符串或 null，则原样返回空字符串或 null。</returns>
+    public static string? AesDecrypt(string? encryptedString, string key = "EncryptKey") {
+        if (string.IsNullOrEmpty(encryptedString)) return encryptedString; // 原样返回空字符串或 null
         byte[] encryptedBytes;
         try {
             encryptedBytes = Convert.FromBase64String(encryptedString);
         } catch (FormatException ex) {
             throw new CryptographicException($"数据不是一个有效的 Base64 字符串（{encryptedString}）", ex);
         }
-        int cipherSize = encryptedBytes.Length - 1 - 16;
-        if (encryptedBytes.Length < 1 + 16 + 16 || encryptedBytes[0] != AesDataVersion || cipherSize % 16 != 0)
+        if (encryptedBytes.Length == 0) throw new CryptographicException($"对称加密数据长度有误（{encryptedString}）");
+        int cipherSize = encryptedBytes.Length - 1 - AesIvSize - AesCheckSize;
+        if (encryptedBytes[0] != AesDataVersion || cipherSize < 16 || cipherSize % 16 != 0)
             throw new CryptographicException($"对称加密数据长度有误（{encryptedString}）");
-        byte[] iv = new byte[16];
-        Array.Copy(encryptedBytes, 1, iv, 0, iv.Length);
         using var sha256 = SHA256.Create();
+        byte[] hmacKey = sha256.ComputeHash(Encoding.UTF8.GetBytes("AES-HMAC|" + key));
+        using var hmac = new HMACSHA256(hmacKey);
+        byte[] checkBytes = hmac.ComputeHash(encryptedBytes, 0, 1 + AesIvSize + cipherSize);
+        int checkOffset = 1 + AesIvSize + cipherSize;
+        int checkDiff = 0;
+        for (int i = 0; i < AesCheckSize; i++)
+            checkDiff |= encryptedBytes[checkOffset + i] ^ checkBytes[i];
+        if (checkDiff != 0) throw new CryptographicException($"对称加密数据校验失败（{encryptedString}）");
+        byte[] aesKey = sha256.ComputeHash(Encoding.UTF8.GetBytes(key));
+        byte[] iv = new byte[AesIvSize];
+        Array.Copy(encryptedBytes, 1, iv, 0, iv.Length);
         using Aes aes = Aes.Create();
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.PKCS7;
-        using ICryptoTransform decryptor = aes.CreateDecryptor(sha256.ComputeHash(Encoding.UTF8.GetBytes(key)), iv);
-        using var ms = new MemoryStream(encryptedBytes, 1 + iv.Length, cipherSize);
-        using var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read);
-        using var output = new MemoryStream();
-        cs.CopyTo(output);
-        return Encoding.UTF8.GetString(output.ToArray());
+        using ICryptoTransform decryptor = aes.CreateDecryptor(aesKey, iv);
+        byte[] output = decryptor.TransformFinalBlock(encryptedBytes, 1 + iv.Length, cipherSize);
+        return Encoding.UTF8.GetString(output);
     }
+
+    private const int AesIvSize = 16;
+    private const int AesCheckSize = 4;
 
     #endregion
 
