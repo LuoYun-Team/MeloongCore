@@ -59,6 +59,7 @@
 		<Using Include="System.Diagnostics.CodeAnalysis" />
 		<Using Include="System.Collections" />
 		<Using Include="System.Collections.Generic" />
+		<Using Include="System.Collections.Concurrent" />
 		<Using Include="System.Text" />
 		<Using Include="System.Net" />
 		<Using Include="System.Runtime.CompilerServices" />
