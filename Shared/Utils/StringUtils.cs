@@ -1,7 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 
 namespace MeloongCore;
-public static class TextUtils {
+public static class StringUtils {
 
     #region 转义
 
@@ -191,5 +191,17 @@ public static class TextUtils {
     }
 
     #endregion
+
+    /// <summary>
+    /// 将字符串解析为版本号。
+    /// 允许缺少次要版本（如 "2" 代表 "2.0"）。
+    /// </summary>
+    public static Version ToVersion(string value) {
+        if (Version.TryParse(value.Contains('.') ? value : value + ".0", out var version)) {
+            return version;
+        } else {
+            throw new FormatException($"无法将字符串 \"{value}\" 解析为版本号");
+        }
+    }
 
 }

@@ -9,6 +9,8 @@ public sealed class ValueRange<T>(
     bool hasLower, bool hasUpper
 ) where T : notnull, IComparable<T> {
 
+    #region 基础字段
+
     public T? Lower { get; private set; } = hasLower && lower is null ? throw new ArgumentNullException(nameof(lower)) : lower;
     public T? Upper { get; private set; } = hasUpper && upper is null ? throw new ArgumentNullException(nameof(upper)) : upper;
 
@@ -34,7 +36,9 @@ public sealed class ValueRange<T>(
     /// <summary> 上界值是否为闭区间。 </summary>
     public bool IsUpperInclusive = isUpperInclusive;
 
-    #region 工厂方法
+    #endregion
+
+    #region ClosedOpen、AtLeast 等工厂方法
 
     /// <summary> 创建等同于 <c>[lower, upper]</c> 的闭区间。 </summary>
     public static ValueRange<T> Closed(T lower, T upper) => new(lower, upper, true, true, true, true);
@@ -60,6 +64,41 @@ public sealed class ValueRange<T>(
 
     #endregion
 
+    #region 字符串双向转换
+
+    /// <summary>
+    /// 从字符串解析 <see cref="ValueRange{T}"/> 实例。
+    /// </summary>
+    public static ValueRange<T> FromString(string str, Func<string, T>? parseFunc = null) {
+        if (string.IsNullOrEmpty(str)) throw new ArgumentException("不能为空");
+        var isLowerInclusive = str[0] == '[';
+        var isUpperInclusive = str[^1] == ']';
+        if (!isLowerInclusive && str[0] != '(') throw new ArgumentException("开头必须是 [ 或 (");
+        if (!isUpperInclusive && str[^1] != ')') throw new ArgumentException("结尾必须是 ] 或 )");
+        var commaIndex = str.IndexOfAny([',', '，']);
+        if (commaIndex == -1) throw new ArgumentException("需要用逗号分隔两个值");
+        var lowerStr = str[1..commaIndex].Trim();
+        var upperStr = str[(commaIndex + 1)..^1].Trim();
+        T? lower = default;
+        T? upper = default;
+        bool hasLower = false;
+        bool hasUpper = false;
+        if (lowerStr is not ("" or "-∞")) {
+            lower = parseFunc != null ? parseFunc(lowerStr) : (T) Convert.ChangeType(lowerStr, typeof(T));
+            hasLower = true;
+        }
+        if (upperStr is not ("" or "+∞" or "∞")) {
+            upper = parseFunc != null ? parseFunc(upperStr) : (T) Convert.ChangeType(upperStr, typeof(T));
+            hasUpper = true;
+        }
+        return new(lower, upper, isLowerInclusive, isUpperInclusive, hasLower, hasUpper);
+    }
+
+    public override string ToString()
+        => $"{(HasLower && IsLowerInclusive ? "[" : "(")}{(HasLower ? Lower!.ToString() : "-∞")}, {(HasUpper ? Upper!.ToString() : "+∞")}{(HasUpper && IsUpperInclusive ? "]" : ")")}";
+
+    #endregion
+
     /// <summary>
     /// 判断指定值是否位于当前范围内。
     /// </summary>
@@ -78,11 +117,18 @@ public sealed class ValueRange<T>(
     }
 
     /// <summary>
+    /// 该范围是否不包含任何值。
+    /// </summary>
+    public bool IsEmpty() {
+        if (!HasLower || !HasUpper) return false;
+        int compared = Lower!.CompareTo(Upper!);
+        return compared > 0 || (compared == 0 && (!IsLowerInclusive || !IsUpperInclusive));
+    }
+
+    /// <summary>
     /// 取当前范围与另一个范围的交集。
     /// </summary>
-    /// <returns>
-    /// 若两个范围存在交集，则返回交集范围；否则返回 <see langword="null" />。
-    /// </returns>
+    /// <returns> 若两个范围存在交集，则返回交集范围；否则返回 <see langword="null" />。 </returns>
     public ValueRange<T>? Intersect(ValueRange<T> other) {
         T? lower = default;
         T? upper = default;
@@ -137,15 +183,7 @@ public sealed class ValueRange<T>(
 
         var anyHasLower = HasLower || other.HasLower;
         var anyHasUpper = HasUpper || other.HasUpper;
-        if (anyHasLower && anyHasUpper) {
-            var compare = lower!.CompareTo(upper!);
-            if (compare > 0) return null;
-            if (compare == 0 && (!isLowerInclusive || !isUpperInclusive)) return null;
-        }
-
         return new(lower, upper, isLowerInclusive, isUpperInclusive, anyHasLower, anyHasUpper);
     }
 
-    public override string ToString()
-        => $"{(HasLower && IsLowerInclusive ? "[" : "(")}{(HasLower ? Lower!.ToString() : "-∞")}, {(HasUpper ? Upper!.ToString() : "+∞")}{(HasUpper && IsUpperInclusive ? "]" : ")")}";
 }

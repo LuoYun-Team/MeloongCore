@@ -48,7 +48,7 @@ public class JsonConfigProvider : IConfigProvider {
             json.Value[key] = JValue.CreateNull();
         } else if (encrypted) {
             // 需要加密，在 JSON 中保存密文字符串
-            json.Value[key] = CryptographyUtils.AesEncrypt(value is string str ? str : JsonConvert.SerializeObject(value)); // UNDONE: 加密改为识别码
+            json.Value[key] = CryptographyUtils.AesEncrypt(value is string str ? str : JsonConvert.SerializeObject(value)); // TODO: 加密改为使用识别码
         } else {
             // 用 JToken 保留原始结构
             json.Value[key] = JToken.FromObject(value);
