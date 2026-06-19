@@ -8,15 +8,15 @@ public interface IConfigProvider {
     /// 将数据写入缓存。
     /// <para/> 这不会写入数据，还需要调用 <see cref="Save"/> 以保存。
     /// </summary>
-    void SetToCache(string key, string? value, bool encrypted = false);
+    void SetToCache(string key, string? value, bool encrypted);
     /// <summary>
     /// 将指定数据从缓存中移除。
     /// <para/> 这不会写入数据，还需要调用 <see cref="Save"/> 以保存。
     /// </summary>
     void RemoveFromCache(string key);
-    string? Read(string key, string? defaultValue = null, bool encrypted = false);
+    string? Read(string key, string? defaultValue, bool encrypted);
     bool HasValue(string key);
-    void ClearCache();
+    void DiscardCache();
     void Save();
 }
 
@@ -29,40 +29,37 @@ public class JsonConfigProvider : IConfigProvider {
         ResetContent();
     }
 
-    /// <summary>
-    /// 读取到的原始内容。
-    /// </summary>
-    public Lazy<JObject> Content { get; private set; }
+    private Lazy<JObject> content;
     private void ResetContent() {
-        Content = new(() => {
+        content = new(() => {
             try {
                 return FileUtils.Exists(filePath) ? ((JObject?) FileUtils.ReadAsJson(filePath) ?? []) : [];
             } catch (Exception ex) {
-                Logger.Error(ex, $"读取配置文件失败（{filePath}）", LogBehavior.Toast);
+                Logger.Error(ex, $"读取配置文件失败（{filePath}）", LogBehavior.Alert);
                 return [];
             }
         });
     }
 
-    public void SetToCache(string key, string? value, bool encrypted = false) {
+    public void SetToCache(string key, string? value, bool encrypted) {
         if (encrypted) {
-            Content.Value[key] = CryptographyUtils.AesEncrypt(value); // UNDONE: 改为识别码
+            content.Value[key] = CryptographyUtils.AesEncrypt(value); // UNDONE: 改为识别码
             decryptedContentCache[key] = value;
         } else {
-            Content.Value[key] = value;
+            content.Value[key] = value;
         }
     }
-    public string? Read(string key, string? defaultValue = null, bool encrypted = false) {
-        if (!Content.Value.ContainsKey(key)) return defaultValue;
+    public string? Read(string key, string? defaultValue, bool encrypted) {
         if (encrypted && decryptedContentCache.TryGetValue(key, out var cachedValue)) return cachedValue; // 读取缓存中已经解密的值
-        // 读取值
-        string? value = Content.Value[key]?.ToString();
-        if (!encrypted) return value;
-        // 解密读取的数据
         try {
-            return decryptedContentCache.GetOrAdd(key, _ => CryptographyUtils.AesDecrypt(value));
+            if (!content.Value.TryGetValue(key, out var result)) return defaultValue;
+            if (encrypted) { // 解密
+                result = CryptographyUtils.AesDecrypt(result?.ToString());
+                decryptedContentCache.TryAdd(key, result?.ToString());
+            }
+            return result?.ToString();
         } catch (CryptographicException ex) {
-            Logger.Error(ex, $"解密配置失败（{key}）", LogBehavior.Toast);
+            Logger.Error(ex, $"解密配置失败，该配置将被重置（{key}）", LogBehavior.Alert);
             RemoveFromCache(key);
             Save();
             return defaultValue;
@@ -70,37 +67,38 @@ public class JsonConfigProvider : IConfigProvider {
     }
 
     public bool HasValue(string key)
-        => Content.Value.ContainsKey(key);
+        => content.Value.ContainsKey(key);
     public void RemoveFromCache(string key) {
-        Content.Value.Remove(key);
+        content.Value.Remove(key);
         decryptedContentCache.TryRemove(key, out _);
     }
-    public void ClearCache() {
+    public void DiscardCache() {
         ResetContent();
         decryptedContentCache.Clear();
     }
     public void Save()
-        => FileUtils.Write(filePath, Content.Value.ToString(Formatting.Indented));
+        => FileUtils.Write(filePath, content.Value.ToString(Formatting.Indented));
 }
 
-public static class Configs {
+public static class ConfigUtils {
     public static readonly JsonConfigProvider AppData = new(Path.Combine(Paths.AppDataThenName, "config.json"));
 
     /// <summary>
     /// 从 secret.json 中读取特定密钥，如果未找到对应密钥则抛出异常。
     /// </summary>
-    public static string GetSecret(string key) => secret.Read(key)?.ToString() ?? throw new KeyNotFoundException($"Secret not found: {key}");
+    public static string GetSecret(string key) 
+        => secret.Read(key, null, false)?.ToString() ?? throw new KeyNotFoundException($"Secret not found: {key}");
     private static readonly JsonConfigProvider secret = new(Path.Combine(Paths.AppData, "secret.json"));
 }
 
-public class ConfigEntry<T>(string key, T? defaultValue, IConfigProvider? defaultProvider = null, bool encrypted = false) where T : IEquatable<T> {
+public class ConfigEntry<T>(string key, T? defaultValue, IConfigProvider? defaultProvider = null, bool encrypted = false) {
     private IConfigProvider GetProvider(IConfigProvider? provider)
-        => provider ?? defaultProvider ?? Configs.AppData;
+        => provider ?? defaultProvider ?? ConfigUtils.AppData;
 
     /// <summary>
     /// 当设置项的值实际被改变时触发，参数为新值。
     /// </summary>
-    public event Action<T?>? OnChanged;
+    public event Action<T?>? Changed;
 
     public T? Get(IConfigProvider? providerOverride = null) {
         var provider = GetProvider(providerOverride);
@@ -108,10 +106,7 @@ public class ConfigEntry<T>(string key, T? defaultValue, IConfigProvider? defaul
         string? value = provider.Read(key, defaultValue?.ToString(), encrypted);
         try {
             if (value is null) return default;
-            var type = typeof(T);
-            if (type == typeof(string)) return (T) (object) value;
-            if (typeof(JToken).IsAssignableFrom(type)) return (T) (object) value.DeserializeJson()!;
-            return (T) Convert.ChangeType(value, type);
+            return typeof(T) == typeof(string) ? ((T) (object) value) : JsonConvert.DeserializeObject<T>(value);
         } catch (Exception ex) {
             Logger.Error(ex, $"读取配置项失败（{key}）", LogBehavior.Toast);
             return defaultValue;
@@ -121,9 +116,10 @@ public class ConfigEntry<T>(string key, T? defaultValue, IConfigProvider? defaul
         var provider = GetProvider(providerOverride);
         T? current = Get(provider);
         if ((current is null && value is null) || (current is not null && value is not null && current.Equals(value))) return; // 值未改变，无需更新
-        provider.SetToCache(key, value?.ToString(), encrypted);
+        provider.SetToCache(key, 
+            typeof(T) == typeof(string) ? (value as string) : JsonConvert.SerializeObject(value), encrypted);
         provider.Save();
-        OnChanged?.Invoke(value);
+        Changed?.Invoke(value);
     }
     public bool HasValue(IConfigProvider? providerOverride = null) {
         var provider = GetProvider(providerOverride);
@@ -134,7 +130,7 @@ public class ConfigEntry<T>(string key, T? defaultValue, IConfigProvider? defaul
         if (!provider.HasValue(key)) return; // 值未设置，无需重置
         provider.RemoveFromCache(key);
         provider.Save();
-        OnChanged?.Invoke(defaultValue);
+        Changed?.Invoke(defaultValue);
     }
     public void Save(IConfigProvider? providerOverride = null) {
         var provider = GetProvider(providerOverride);
