@@ -49,7 +49,7 @@ public static class TaskUtils {
         return (await outputTask + await errorTask, program.ExitCode);
     }
 
-    public static void ForEach<T>(this IEnumerable<T> source, Action<T> body)
+    public static void ForEach<T>(IEnumerable<T> source, Action<T> body)
         => Parallel.ForEach(source, body);
     public static async Task ForEachAsync<T>(IEnumerable<T> source, int maxDegreeOfParallelism, Func<T, CancellationToken, Task> body, CancellationToken cancellationToken = default) {
         using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

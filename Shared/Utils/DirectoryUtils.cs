@@ -5,10 +5,10 @@ public static class DirectoryUtils {
     /// 创建文件夹，或文件所在的文件夹。
     /// 文件夹已存在时不会抛出异常。
     /// </summary>
-    public static void Create(string path) {
-        if (DirectoryUtils.Exists(path)) return;
-        Logger.Trace($"新建文件夹：{path}");
-        Directory.CreateDirectory(PathUtils.ForApi(path));
+    public static void Create(string folder) {
+        if (DirectoryUtils.Exists(folder)) return;
+        Logger.Trace($"新建文件夹：{folder}");
+        Directory.CreateDirectory(PathUtils.ForApi(folder));
     }
 
     /// <summary>
@@ -23,22 +23,22 @@ public static class DirectoryUtils {
     /// <summary>
     /// 判断文件夹是否存在。
     /// </summary>
-    public static bool Exists(string path) 
-        => Directory.Exists(PathUtils.ForApi(path));
+    public static bool Exists(string folder) 
+        => Directory.Exists(PathUtils.ForApi(folder));
 
     /// <summary>
     /// 获取 <see cref="DirectoryInfo"/> 对象。
     /// </summary>
-    public static DirectoryInfo GetInfo(string path) 
-        => new(PathUtils.ForApi(path));
+    public static DirectoryInfo GetInfo(string folder) 
+        => new(PathUtils.ForApi(folder));
 
     /// <summary>
     /// 返回指定路径下的所有文件，不以 \\?\ 开头。
     /// 如果文件夹不存在，返回空列表。
     /// </summary>
-    public static IEnumerable<string> EnumerateFiles(string path, bool includeSubDirectories = false, string searchPattern = "*") {
-        if (!DirectoryUtils.Exists(path)) return [];
-        return Directory.EnumerateFiles(PathUtils.ForApi(path), searchPattern, includeSubDirectories ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly).
+    public static IEnumerable<string> EnumerateFiles(string folder, bool includeSubDirectories = false, string searchPattern = "*") {
+        if (!DirectoryUtils.Exists(folder)) return [];
+        return Directory.EnumerateFiles(PathUtils.ForApi(folder), searchPattern, includeSubDirectories ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly).
             Select(PathUtils.RemoveExtendedPrefix);
     }
 
@@ -46,9 +46,9 @@ public static class DirectoryUtils {
     /// 返回指定路径下的所有文件夹，不以分隔符结尾，不以 \\?\ 开头。
     /// 如果文件夹不存在，返回空列表。
     /// </summary>
-    public static IEnumerable<string> EnumerateDirectories(string path, bool includeSubDirectories = false, string searchPattern = "*") {
-        if (!DirectoryUtils.Exists(path)) return [];
-        return Directory.EnumerateDirectories(PathUtils.ForApi(path), searchPattern, includeSubDirectories ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly).
+    public static IEnumerable<string> EnumerateDirectories(string folder, bool includeSubDirectories = false, string searchPattern = "*") {
+        if (!DirectoryUtils.Exists(folder)) return [];
+        return Directory.EnumerateDirectories(PathUtils.ForApi(folder), searchPattern, includeSubDirectories ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly).
             Select(PathUtils.RemoveExtendedPrefix);
     }
 
@@ -56,9 +56,9 @@ public static class DirectoryUtils {
     /// 该文件夹是否为空。
     /// 如果文件夹不存在，返回 true。
     /// </summary>
-    public static bool IsEmpty(string path) {
-        if (!DirectoryUtils.Exists(path)) return true;
-        return !Directory.EnumerateFileSystemEntries(PathUtils.ForApi(path)).Any();
+    public static bool IsEmpty(string folder) {
+        if (!DirectoryUtils.Exists(folder)) return true;
+        return !Directory.EnumerateFileSystemEntries(PathUtils.ForApi(folder)).Any();
     }
 
     /// <summary>
