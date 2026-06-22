@@ -194,14 +194,11 @@ public static class StringUtils {
 
     /// <summary>
     /// 将字符串解析为版本号。
-    /// 允许缺少次要版本（如 "2" 代表 "2.0"）。
+    /// 允许缺少任意多个段，且会将缺失的段不为 0，而不是 -1。例如，"2" 会被解析为 2.0.0.0。
     /// </summary>
-    public static Version ToVersion(string value) {
-        if (Version.TryParse(value.Contains('.') ? value : value + ".0", out var version)) {
-            return version;
-        } else {
-            throw new FormatException($"无法将字符串 \"{value}\" 解析为版本号");
-        }
+    public static Version ParseVersionWithDefaults(string value) {
+        while (value.Count(c => c == '.') < 3) value += ".0";
+        return Version.Parse(value);
     }
 
 }
