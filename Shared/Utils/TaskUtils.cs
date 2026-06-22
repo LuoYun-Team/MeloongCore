@@ -23,7 +23,7 @@ public static class TaskUtils {
         };
         using var program = new Process { StartInfo = info, EnableRaisingEvents = true };
         if (!program.Start()) throw new InvalidOperationException($"运行程序时出现意外错误：{file} {arguments}");
-        bool hasTimeout = timeoutMs.HasValue && timeoutMs > 0;
+        bool hasTimeout = timeoutMs is > 0;
         Logger.Info($"运行程序，并返回其输出：{file} {arguments}{(hasTimeout ? $"，最长可等待 {timeoutMs}ms" : "")}");
 
         // 输出和错误流
@@ -49,6 +49,8 @@ public static class TaskUtils {
         return (await outputTask + await errorTask, program.ExitCode);
     }
 
+    public static void ForEach<T>(this IEnumerable<T> source, Action<T> body)
+        => Parallel.ForEach(source, body);
     public static async Task ForEachAsync<T>(IEnumerable<T> source, int maxDegreeOfParallelism, Func<T, CancellationToken, Task> body, CancellationToken cancellationToken = default) {
         using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var token = linkedCancellationTokenSource.Token;
