@@ -96,29 +96,47 @@ public static class ModernTooltipService {
     private static void OnMouseMove(object sender, MouseEventArgs e) {
         if (sender is not FrameworkElement reference) return;
 
-        if (IsAnyMouseButtonPressed()) {
+        if (Mouse.LeftButton == MouseButtonState.Pressed) {
             if (currentOwner is FrameworkElement pressedOwner) {
                 lastMousePoint = Mouse.GetPosition(pressedOwner);
-                if (GetFollowMouse(pressedOwner) && popup is { IsOpen: true } && IsPointInside(pressedOwner, lastMousePoint)) {
+                if (GetFollowMouse(pressedOwner) && popup is { IsOpen: true }) {
                     UpdatePosition(pressedOwner, lastMousePoint);
                 }
+            } else if (popup is { IsOpen: true, PlacementTarget: FrameworkElement popupOwner } && GetFollowMouse(popupOwner)) {
+                lastMousePoint = Mouse.GetPosition(popupOwner);
+                UpdatePosition(popupOwner, lastMousePoint);
             }
             return;
         }
 
         RefreshCurrentOwner(reference);
-        if (currentOwner is not FrameworkElement owner) return;
+        if (currentOwner is FrameworkElement owner) {
+            lastMousePoint = Mouse.GetPosition(owner);
+            if (GetFollowMouse(owner) && popup is { IsOpen: true }) UpdatePosition(owner, lastMousePoint);
+            return;
+        }
 
-        lastMousePoint = Mouse.GetPosition(owner);
-        if (GetFollowMouse(owner) && popup is { IsOpen: true }) UpdatePosition(owner, lastMousePoint);
+        if (popup is { IsOpen: true, PlacementTarget: FrameworkElement closingOwner } && GetFollowMouse(closingOwner)) {
+            lastMousePoint = Mouse.GetPosition(closingOwner);
+            UpdatePosition(closingOwner, lastMousePoint);
+        }
     }
 
     private static void OnMouseLeave(object sender, MouseEventArgs e) {
         if (sender is not FrameworkElement owner || !ReferenceEquals(owner, currentOwner)) return;
+        if (sender is TextBox box) {
+            Logger.Warn("MOUSELEAVE: " + (
+            $"Leave: IsMouseOver={box.IsMouseOver}, " +
+            $"Captured={Mouse.Captured}, " +
+            $"DirectlyOver={Mouse.DirectlyOver}, " +
+            $"OriginalSource={e.OriginalSource}"), LogBehavior.None);
+        }
+        Logger.Warn("MOUSELEAVE: " + sender.GetType().Name + ", " +
+            $"Captured={Mouse.Captured}, " +
+            $"DirectlyOver={Mouse.DirectlyOver}, " +
+            $"OriginalSource={e.OriginalSource}", LogBehavior.None);
 
-        // 长按、拖选时鼠标会短暂离开元素边界；此时收回 Tooltip 会造成明显闪烁。
-        if (IsAnyMouseButtonPressed()) return;
-        if (!owner.IsEnabled && ToolTipService.GetShowOnDisabled(owner) && IsPointInside(owner, Mouse.GetPosition(owner))) return;
+        if (!(owner.IsEnabled || !ToolTipService.GetShowOnDisabled(owner) || !IsPointInside(owner, Mouse.GetPosition(owner)))) return;
 
         var nextOwner = FindCurrentTooltipOwner(owner);
         if (nextOwner is not null && !ReferenceEquals(nextOwner, owner)) {
@@ -221,17 +239,12 @@ public static class ModernTooltipService {
     }
 
     private static bool ShouldSuppressTooltip(FrameworkElement? owner) {
-        if (IsAnyMouseButtonPressed() || Mouse.Captured is null) return false;
+        if (Mouse.LeftButton == MouseButtonState.Pressed || Mouse.Captured is null) return false;
         if (Mouse.Captured is not DependencyObject captured) return true;
         if (owner is null) return true;
 
         return !IsSameTreeBranch(captured, owner);
     }
-
-    private static bool IsAnyMouseButtonPressed() =>
-        Mouse.LeftButton == MouseButtonState.Pressed || Mouse.RightButton == MouseButtonState.Pressed ||
-        Mouse.MiddleButton == MouseButtonState.Pressed || Mouse.XButton1 == MouseButtonState.Pressed ||
-        Mouse.XButton2 == MouseButtonState.Pressed;
 
     private static bool IsPointInside(FrameworkElement owner, Point point) =>
         point.X >= 0 && point.Y >= 0 && point.X <= owner.ActualWidth && point.Y <= owner.ActualHeight;
