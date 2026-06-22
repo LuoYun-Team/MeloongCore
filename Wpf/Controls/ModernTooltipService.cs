@@ -124,17 +124,6 @@ public static class ModernTooltipService {
 
     private static void OnMouseLeave(object sender, MouseEventArgs e) {
         if (sender is not FrameworkElement owner || !ReferenceEquals(owner, currentOwner)) return;
-        if (sender is TextBox box) {
-            Logger.Warn("MOUSELEAVE: " + (
-            $"Leave: IsMouseOver={box.IsMouseOver}, " +
-            $"Captured={Mouse.Captured}, " +
-            $"DirectlyOver={Mouse.DirectlyOver}, " +
-            $"OriginalSource={e.OriginalSource}"), LogBehavior.None);
-        }
-        Logger.Warn("MOUSELEAVE: " + sender.GetType().Name + ", " +
-            $"Captured={Mouse.Captured}, " +
-            $"DirectlyOver={Mouse.DirectlyOver}, " +
-            $"OriginalSource={e.OriginalSource}", LogBehavior.None);
 
         if (!(owner.IsEnabled || !ToolTipService.GetShowOnDisabled(owner) || !IsPointInside(owner, Mouse.GetPosition(owner)))) return;
 

@@ -157,8 +157,13 @@ public static class PathUtils {
     /// 统一路径格式，以便比较。
     /// <para/>具体而言：将短路径展开，去除前导的 <c>\\?\</c>，将分隔符改为 \，去除末尾的分隔符。
     /// </summary>
-    public static string ForCompare(string pathName) 
-        => PathUtils.RemoveSlashSuffix(PathUtils.RemoveExtendedPrefix(Path.GetFullPath(pathName)).Replace("/", @"\"));
+    public static string ForCompare(string pathName) {
+        try {
+            return PathUtils.RemoveSlashSuffix(PathUtils.RemoveExtendedPrefix(Path.GetFullPath(pathName)).Replace("/", @"\"));
+        } catch (ArgumentException ex) {
+            throw new ArgumentException($"路径不正确：{pathName}", ex);
+        }
+    }
 
     /// <summary>
     /// 将路径转换为兼容各种 Windows API 的格式。
