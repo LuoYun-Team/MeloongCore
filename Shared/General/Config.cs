@@ -104,12 +104,12 @@ public static class ConfigUtils {
 
 public class ConfigEntry<T>(string key, T? defaultValue, IConfigProvider? defaultProvider = null, bool encrypted = false) {
 
+    public IConfigProvider DefaultProvider => defaultProvider ?? ConfigUtils.AppData;
     /// <summary>
     /// 当设置项的值实际被改变时触发，参数为新值。
     /// </summary>
     public event Action<T?, IConfigProvider>? Changed;
 
-    public IConfigProvider DefaultProvider => defaultProvider ?? ConfigUtils.AppData;
     public void Edit(Func<T?, T?> editFunc, IConfigProvider? providerOverride = null) {
         var provider = providerOverride ?? DefaultProvider;
         Set(editFunc(Get(provider)), provider);
@@ -139,7 +139,5 @@ public class ConfigEntry<T>(string key, T? defaultValue, IConfigProvider? defaul
         => (providerOverride ?? DefaultProvider).Read(key, defaultValue, encrypted);
     public bool HasValue(IConfigProvider? providerOverride = null)
         => (providerOverride ?? DefaultProvider).HasValue(key);
-    public void Save(IConfigProvider? providerOverride = null) 
-        => (providerOverride ?? DefaultProvider).Save();
     public static implicit operator T?(ConfigEntry<T> entry) => entry.Get();
 }
