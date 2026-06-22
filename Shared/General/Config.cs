@@ -110,6 +110,16 @@ public class ConfigEntry<T>(string key, T? defaultValue, IConfigProvider? defaul
     public event Action<T?, IConfigProvider>? Changed;
 
     public IConfigProvider DefaultProvider => defaultProvider ?? ConfigUtils.AppData;
+    public void Edit(Func<T?, T?> editFunc, IConfigProvider? providerOverride = null) {
+        var provider = providerOverride ?? DefaultProvider;
+        Set(editFunc(Get(provider)), provider);
+    }
+    public void Edit(Action<T?> editFunc, IConfigProvider? providerOverride = null) {
+        var provider = providerOverride ?? DefaultProvider;
+        var current = Get(provider);
+        editFunc(current);
+        Set(current, provider);
+    }
     public void Set(T? value, IConfigProvider? providerOverride = null) {
         var provider = providerOverride ?? DefaultProvider;
         T? current = Get(provider);
