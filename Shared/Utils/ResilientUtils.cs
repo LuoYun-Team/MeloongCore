@@ -34,7 +34,7 @@ public static class ResilientUtils {
                 attempt++;
                 if (attempt < maxAttempts) {
                     Logger.Warn(ex, $"第 {attempt} 次 {caller} 尝试失败，将在 {delayMs}ms 后重试");
-                    Thread.Sleep(delayMs);
+                    if (delayMs > 0) Thread.Sleep(delayMs);
                 } else { // 超过最大尝试次数
                     Logger.Warn(ex, $"第 {attempt} 次 {caller} 尝试失败，已到达最大尝试次数");
                     throw;
@@ -54,7 +54,7 @@ public static class ResilientUtils {
                 attempt++;
                 if (attempt < maxAttempts) {
                     Logger.Warn(ex, $"第 {attempt} 次 {caller} 尝试失败，将在 {delayMs}ms 后重试");
-                    Thread.Sleep(delayMs);
+                    if (delayMs > 0) Thread.Sleep(delayMs);
                 } else { // 超过最大尝试次数
                     Logger.Warn(ex, $"第 {attempt} 次 {caller} 尝试失败，已到达最大尝试次数");
                     throw;

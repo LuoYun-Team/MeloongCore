@@ -184,8 +184,8 @@ public class BaseLogger {
 
     // 核心方法
     public virtual void Log(Exception? ex, string? message, LogLevel level, LogBehavior behavior, string filePath) {
-        if (ex is ThreadInterruptedException) {
-            Thread.CurrentThread.Interrupt();
+        if (ex?.IsCanceled() == true) {
+            Log(null, $"操作已取消（{message}）", LogLevel.Info, LogBehavior.None, filePath);
             return;
         }
         if (MinLevel > level) return;

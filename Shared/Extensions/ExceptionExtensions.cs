@@ -12,6 +12,24 @@ public static class ExceptionExtensions {
     }
 
     /// <summary>
+    /// 该异常或其子异常是否为 <see cref="OperationCanceledException"/>、<see cref="TaskCanceledException"/> 或 <see cref="ThreadInterruptedException"/>。
+    /// </summary>
+    public static bool IsCanceled(this Exception ex) {
+        foreach (var inner in ex.Flatten()) {
+            if (inner is OperationCanceledException or TaskCanceledException or ThreadInterruptedException) return true;
+        }
+        return false;
+    }
+    /// <summary>
+    /// 当该异常或其子异常是 <see cref="OperationCanceledException"/>、<see cref="TaskCanceledException"/> 或 <see cref="ThreadInterruptedException"/> 时，抛出对应异常。
+    /// </summary>
+    public static void ThrowOnCanceled(this Exception ex) {
+        foreach (var inner in ex.Flatten()) {
+            if (inner is OperationCanceledException or TaskCanceledException or ThreadInterruptedException) throw inner;
+        }
+    }
+
+    /// <summary>
     /// 将异常所有的 <see cref="Exception.InnerException"/> 展开。
     /// 若为 <see cref="AggregateException"/>，也会展开其中所有的子异常。
     /// </summary>
