@@ -7,7 +7,7 @@ public sealed class ValueRange<T>(
     T? lower, T? upper,
     bool isLowerInclusive, bool isUpperInclusive,
     bool hasLower, bool hasUpper
-) where T : notnull, IComparable<T> {
+) : IEquatable<ValueRange<T>?> where T : notnull, IComparable<T> {
 
     #region 基础字段
 
@@ -185,5 +185,34 @@ public sealed class ValueRange<T>(
         var anyHasUpper = HasUpper || other.HasUpper;
         return new(lower, upper, isLowerInclusive, isUpperInclusive, anyHasLower, anyHasUpper);
     }
+
+    #region 相等判断（自动生成）
+
+    public override bool Equals(object? obj) => Equals(obj as ValueRange<T>);
+    public bool Equals(ValueRange<T>? other) {
+        return other is not null&&
+               EqualityComparer<T?>.Default.Equals(Lower, other.Lower)&&
+               EqualityComparer<T?>.Default.Equals(Upper, other.Upper)&&
+               HasLower==other.HasLower&&
+               HasUpper==other.HasUpper&&
+               IsLowerInclusive==other.IsLowerInclusive&&
+               IsUpperInclusive==other.IsUpperInclusive;
+    }
+    public override int GetHashCode() {
+        int hashCode = 169504101;
+        hashCode=hashCode*-1521134295+EqualityComparer<T?>.Default.GetHashCode(Lower);
+        hashCode=hashCode*-1521134295+EqualityComparer<T?>.Default.GetHashCode(Upper);
+        hashCode=hashCode*-1521134295+HasLower.GetHashCode();
+        hashCode=hashCode*-1521134295+HasUpper.GetHashCode();
+        hashCode=hashCode*-1521134295+IsLowerInclusive.GetHashCode();
+        hashCode=hashCode*-1521134295+IsUpperInclusive.GetHashCode();
+        return hashCode;
+    }
+#pragma warning disable CS8604 // 引用类型参数可能为 null。
+    public static bool operator ==(ValueRange<T>? left, ValueRange<T>? right) => EqualityComparer<ValueRange<T>>.Default.Equals(left, right);
+#pragma warning restore CS8604 // 引用类型参数可能为 null。
+    public static bool operator !=(ValueRange<T>? left, ValueRange<T>? right) => !(left==right);
+
+    #endregion
 
 }
