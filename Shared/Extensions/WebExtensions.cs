@@ -1,4 +1,4 @@
-﻿namespace MeloongCore.Extensions;
+namespace MeloongCore.Extensions;
 public static class WebExtensions {
 
     // Source - https://stackoverflow.com/a/46026230, Posted by desautelsj, Retrieved 2026-06-14, License - CC BY-SA 4.0

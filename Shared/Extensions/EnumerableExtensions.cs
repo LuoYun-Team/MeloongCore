@@ -1,4 +1,4 @@
-﻿namespace MeloongCore.Extensions;
+namespace MeloongCore.Extensions;
 public static class EnumerableExtensions {
 
     #region 去重

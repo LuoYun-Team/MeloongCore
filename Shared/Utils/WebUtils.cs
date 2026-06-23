@@ -1,4 +1,4 @@
-﻿namespace MeloongCore;
+namespace MeloongCore;
 
 /// <summary>
 /// 当 HTTP 请求的状态码不指示成功时引发的异常。

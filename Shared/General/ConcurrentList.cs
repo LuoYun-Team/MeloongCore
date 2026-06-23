@@ -1,4 +1,4 @@
-﻿namespace MeloongCore;
+namespace MeloongCore;
 
 /// <summary>
 /// 使用粗粒度锁的线程安全 <see cref="List{T}"/> 实现。

@@ -1,4 +1,4 @@
-﻿namespace MeloongCore;
+namespace MeloongCore;
 public readonly struct OneOf<T0, T1> {
     private readonly int _index = -1; // -1 表示未初始化（这是一个 struct，所以这可以让默认值不为 0）
     private readonly T0? _value0;

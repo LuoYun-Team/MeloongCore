@@ -1,4 +1,4 @@
-﻿namespace MeloongCore;
+namespace MeloongCore;
 public static class Main {
 
     public static string AppName = "Meloong";

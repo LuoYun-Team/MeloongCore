@@ -1,4 +1,4 @@
-﻿namespace MeloongCore;
+namespace MeloongCore;
 public static class DirectoryUtils {
 
     /// <summary>

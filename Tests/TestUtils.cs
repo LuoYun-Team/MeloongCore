@@ -1,4 +1,4 @@
-﻿namespace MeloongCore.Tests;
+namespace MeloongCore.Tests;
 
 /// <summary>
 /// 所有测试的基类。

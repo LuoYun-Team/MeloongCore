@@ -1,4 +1,4 @@
-﻿using System.Windows.Controls;
+using System.Windows.Controls;
 
 namespace MeloongCore.Wpf.Extensions;
 public static class WpfExtensions {

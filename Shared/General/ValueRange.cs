@@ -1,4 +1,4 @@
-﻿namespace MeloongCore;
+namespace MeloongCore;
 
 /// <summary>
 /// 表示一个由可选下界和可选上界组成的范围。

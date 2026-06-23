@@ -1,4 +1,4 @@
-﻿namespace MeloongCore.Tests;
+namespace MeloongCore.Tests;
 public class PathUtilsTests : TestBase {
 
     #region 路径处理
