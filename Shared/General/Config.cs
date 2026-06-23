@@ -114,12 +114,14 @@ public class ConfigEntry<T>(string key, T? defaultValue, IConfigProvider? defaul
         var provider = providerOverride ?? DefaultProvider;
         Set(editFunc(Get(provider)), provider);
     }
-    public void Edit(Action<T?> editFunc, IConfigProvider? providerOverride = null) {
+    public void Edit(RefAction editAction, IConfigProvider? providerOverride = null) {
         var provider = providerOverride ?? DefaultProvider;
         var current = Get(provider);
-        editFunc(current);
+        editAction(ref current);
         Set(current, provider);
     }
+    public delegate void RefAction(ref T? value);
+
     public void Set(T? value, IConfigProvider? providerOverride = null) {
         var provider = providerOverride ?? DefaultProvider;
         T? current = Get(provider);
