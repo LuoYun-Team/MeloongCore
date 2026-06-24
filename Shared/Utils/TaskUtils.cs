@@ -3,9 +3,6 @@ using System.Diagnostics;
 namespace MeloongCore;
 public static class TaskUtils {
 
-    public static void Run(this Task task) => task.GetAwaiter().GetResult();
-    public static T Run<T>(this Task<T> task) => task.GetAwaiter().GetResult();
-
     /// <summary>
     /// 静默运行程序并等待其结束，返回其输出和退出码。
     /// 支持 notepad、git 等命令。

@@ -23,7 +23,7 @@ public static class ExceptionExtensions {
     /// <summary>
     /// 当该异常或其子异常是 <see cref="OperationCanceledException"/>、<see cref="TaskCanceledException"/> 或 <see cref="ThreadInterruptedException"/> 时，抛出对应异常。
     /// </summary>
-    public static void ThrowOnCanceled(this Exception ex) {
+    public static void ThrowIfCanceled(this Exception ex) {
         foreach (var inner in ex.Flatten()) {
             if (inner is OperationCanceledException or TaskCanceledException or ThreadInterruptedException) throw inner;
         }
