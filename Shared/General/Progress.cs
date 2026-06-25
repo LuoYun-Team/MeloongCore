@@ -6,35 +6,47 @@ namespace MeloongCore;
 /// </summary>
 public class ProgressProvider {
 
+    /// <summary>
+    /// 当进度被改变时触发。
+    /// </summary>
+    public event Action? ProgressChanged;
+
     // ===================================== 主项进度 =====================================
 
     private (double actual, double skiped, double splited) progressParts = (0, 0, 0);
     private double progressSum => progressParts.actual + progressParts.skiped + progressParts.splited;
+    private bool _Set(double value, bool skiped) {
+        value = value.Clamp(0, 1);
+        double delta = value - progressSum;
+        if (delta < 0) { // 等比减少
+            progressParts = (progressParts.actual * value / progressSum,
+                              progressParts.skiped * value / progressSum,
+                              progressParts.splited * value / progressSum);
+        } else if (skiped) {
+            progressParts.skiped += delta;
+        } else {
+            progressParts.actual += delta;
+        }
+        return delta != 0;
+    }
+
     /// <summary>
     /// 将当前进度设置为指定值。
     /// 若 <paramref name="skiped"/> 为 true，这段进度的增量值将被计为跳过：当前观测进度不会增加，后续观测进度将增加地更快。
     /// </summary>
     public void Set(double value, bool skiped = false) {
-        lock (this) {
-            value = value.Clamp(0, 1);
-            double delta = value - progressSum;
-            if (delta < 0) { // 等比减少
-                progressParts = (progressParts.actual * value / progressSum,
-                                  progressParts.skiped * value / progressSum,
-                                  progressParts.splited * value / progressSum);
-            } else if (skiped) {
-                progressParts.skiped += delta;
-            } else {
-                progressParts.actual += delta;
-            }
-        }
+        bool changed;
+        lock (this) changed = _Set(value, skiped);
+        if (changed) ProgressChanged?.Invoke();
     }
     /// <summary>
     /// 将当前进度增加指定值。
     /// 若 <paramref name="skiped"/> 为 true，这段进度的增量值将被计为跳过：当前观测进度不会增加，后续观测进度将增加地更快。
     /// </summary>
     public void Add(double value, bool skiped = false) {
-        lock (this) Set(value + progressSum, skiped);
+        bool changed;
+        lock (this) changed = _Set(value + progressSum, skiped);
+        if (changed) ProgressChanged?.Invoke();
     }
 
     // ===================================== 子项进度 =====================================
@@ -58,6 +70,7 @@ public class ProgressProvider {
             progressParts.splited += (percentages.Sum() + progressSum).Clamp(0, 1) - progressSum;
             return percentages.Select(percentage => {
                 var sub = new ProgressProvider();
+                sub.ProgressChanged += () => ProgressChanged?.Invoke();
                 childrens.Add((percentage, sub));
                 return sub;
             }).ToList();
