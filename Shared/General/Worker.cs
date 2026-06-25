@@ -3,7 +3,6 @@ namespace MeloongCore;
 /// <summary>
 /// 可合并和重启的工作器。
 /// <para/> 在工作负载运行期间多次调用 <see cref="Run()"/> 会取消当前负载并使用最新令牌重新执行；多次调用也只重新执行一次。
-/// <para/> 若即将重启，则忽略当前负载的异常。
 /// </summary>
 public interface IRedoableWorker {
     /// <summary>当前是否正在运行。</summary>
@@ -70,42 +69,44 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken, TOut> wor
             running = true; idleEvent.Reset();
             realCts = CancellationTokenSource.CreateLinkedTokenSource(lastToken);
         }
-        var th = new Thread(_Run);
+        var th = new Thread(_Run) { IsBackground = true };
         th.Start();
     }
     private void _Run() {
-        try {
-            TOut result = workload(realCts!.Token); // 实际的执行
-            realCts.Token.ThrowIfCancellationRequested();
-            lock (this) {
-                realCts?.Dispose();
-                if (pendingRedo) { // 接取重启请求
-                    pendingRedo = false;
-                    realCts = CancellationTokenSource.CreateLinkedTokenSource(lastToken);
-                    _Run(); return;
-                } else {
+        while (true) {
+            try {
+                realCts!.Token.ThrowIfCancellationRequested();
+                TOut result = workload(realCts.Token); // 实际的执行
+                realCts.Token.ThrowIfCancellationRequested();
+                lock (this) {
+                    realCts?.Dispose();
+                    if (pendingRedo) { // 接取重启请求
+                        pendingRedo = false;
+                        realCts = CancellationTokenSource.CreateLinkedTokenSource(lastToken);
+                        continue;
+                    }
                     realCts = null;
+                    lastSucceeded = true;
+                    lastResult = result;
+                    hasSucceeded = true;
+                    running = false; idleEvent.Set();
                 }
-                running = false; idleEvent.Set();
-                lastSucceeded = true;
-                lastResult = result;
-                hasSucceeded = true;
-            }
-        } catch (Exception ex) {
-            lock (this) {
-                realCts?.Dispose();
-                if (pendingRedo) { // 接取重启请求
-                    pendingRedo = false;
-                    realCts = CancellationTokenSource.CreateLinkedTokenSource(lastToken);
-                    if (!ex.IsCanceled()) Logger.Info(ex, "在重启前出现了异常");
-                    _Run(); return;
-                } else {
+            } catch (Exception ex) {
+                if (!ex.IsCanceled()) 
+                    Logger.Log(ex, $"工作线程执行失败{(pendingRedo ? "，但即将重启，或可忽略" : "")}", pendingRedo ? LogLevel.Info : LogLevel.Warn);
+                lock (this) {
+                    realCts?.Dispose();
+                    if (pendingRedo) { // 接取重启请求
+                        pendingRedo = false;
+                        realCts = CancellationTokenSource.CreateLinkedTokenSource(lastToken);
+                        continue;
+                    }
                     realCts = null;
+                    lastSucceeded = false;
+                    running = false; idleEvent.Set();
                 }
-                running = false; idleEvent.Set();
-                lastSucceeded = false;
             }
-            if (!ex.IsCanceled()) Logger.Error(ex, "工作线程执行失败", LogBehavior.None);
+            return;
         }
     }
 
