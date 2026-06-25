@@ -272,8 +272,9 @@ public class BaseLogger {
     public void Flush() {
         try {
             if (!avaliable) return;
-            lock (flushLock)
+            lock (flushLock) {
                 while (queue.TryDequeue(out LogEntry entry)) Output(entry); // writer 指定了 AutoFlush
+            }
         } catch (Exception logEx) {
             Logger.SendToDebug(logEx, "输出日志失败");
         }
