@@ -8,8 +8,6 @@ public interface IConfigProvider {
     T? Read<T>(string key, T? defaultValue, bool encrypted);
     bool HasValue(string key);
     void DiscardCache();
-    void MakeDirty();
-    void Save();
 }
 
 public class JsonConfigProvider : IConfigProvider {
@@ -99,8 +97,14 @@ public class JsonConfigProvider : IConfigProvider {
     // ===================================== 保存 =====================================
 
     private readonly RateLimitedAction saveAction;
-    public void MakeDirty() => saveAction.Invoke();
+    private bool isDirty = false;
+    public void MakeDirty() {
+        isDirty = true;
+        saveAction.Invoke();
+    }
     public void Save() {
+        if (!isDirty) return;
+        isDirty = false;
         lock (json) FileUtils.Write(filePath, json.Value.ToString(Formatting.Indented));
     }
 }
