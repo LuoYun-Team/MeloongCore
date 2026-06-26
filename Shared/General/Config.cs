@@ -3,29 +3,24 @@ using System.Security.Cryptography;
 namespace MeloongCore;
 
 public interface IConfigProvider {
-    /// <summary>
-    /// 将数据写入缓存。
-    /// <para/> 这不会写入数据，还需要调用 <see cref="Save"/> 以保存。
-    /// </summary>
-    void SetToCache<T>(string key, T? value, bool encrypted);
-    /// <summary>
-    /// 将指定数据从缓存中移除。
-    /// <para/> 这不会写入数据，还需要调用 <see cref="Save"/> 以保存。
-    /// </summary>
-    void RemoveFromCache(string key);
+    void Set<T>(string key, T? value, bool encrypted);
+    void Remove(string key);
     T? Read<T>(string key, T? defaultValue, bool encrypted);
     bool HasValue(string key);
     void DiscardCache();
+    void MakeDirty();
     void Save();
 }
 
 public class JsonConfigProvider : IConfigProvider {
+    public static readonly ConcurrentBag<WeakReference<JsonConfigProvider>> allProviders = [];
     private readonly string filePath;
+
     public JsonConfigProvider(string filePath) {
         this.filePath = filePath;
-        saveAction = Throttler.Throttle(SaveImmediately, TimeSpan.FromMilliseconds(500), leading: false, trailing: true);
+        allProviders.Add(new(this));
+        saveAction = Throttler.Throttle(Save, TimeSpan.FromMilliseconds(500), leading: false, trailing: true);
         InitJson();
-        AppDomain.CurrentDomain.ProcessExit += (_, _) => SaveBeforeExit();
     }
 
     // 原始文件缓存
@@ -45,7 +40,7 @@ public class JsonConfigProvider : IConfigProvider {
 
     // ================================= 设置、读取、缓存 =================================
 
-    public void SetToCache<T>(string key, T? value, bool encrypted) {
+    public void Set<T>(string key, T? value, bool encrypted) {
         cache[key] = value;
         lock (json) {
             if (value is null) {
@@ -53,12 +48,14 @@ public class JsonConfigProvider : IConfigProvider {
                 json.Value[key] = JValue.CreateNull();
             } else if (encrypted) {
                 // 需要加密，在 JSON 中保存密文字符串
-                json.Value[key] = CryptographyUtils.AesEncrypt(value is string str ? str : JsonConvert.SerializeObject(value)); // TODO: 加密改为使用识别码
+                throw new NotImplementedException("加密需要改为使用识别码，现在尚未实现。");
+                json.Value[key] = CryptographyUtils.AesEncrypt(value is string str ? str : JsonConvert.SerializeObject(value));
             } else {
                 // 用 JToken 保留原始结构
                 json.Value[key] = JToken.FromObject(value);
             }
         }
+        MakeDirty();
     }
     public T? Read<T>(string key, T? defaultValue, bool encrypted) {
         if (cache.TryGetValue(key, out var cachedValue)) return (T?) cachedValue; // 读取缓存
@@ -81,8 +78,7 @@ public class JsonConfigProvider : IConfigProvider {
             return result;
         } catch (CryptographicException ex) {
             Logger.Error(ex, $"解密配置失败，该配置将被重置（{key}）", LogBehavior.Alert);
-            RemoveFromCache(key);
-            Save();
+            Remove(key);
             return defaultValue;
         }
     }
@@ -90,9 +86,10 @@ public class JsonConfigProvider : IConfigProvider {
     public bool HasValue(string key) {
         lock (json) return json.Value.ContainsKey(key);
     }
-    public void RemoveFromCache(string key) {
+    public void Remove(string key) {
         lock (json) json.Value.Remove(key);
         cache.TryRemove(key, out _);
+        MakeDirty();
     }
     public void DiscardCache() {
         lock (json) InitJson();
@@ -102,27 +99,23 @@ public class JsonConfigProvider : IConfigProvider {
     // ===================================== 保存 =====================================
 
     private readonly RateLimitedAction saveAction;
-    private bool isDirty = false;
+    public void MakeDirty() => saveAction.Invoke();
     public void Save() {
-        lock (json) isDirty = true;
-        saveAction.Invoke();
-    }
-    private void SaveBeforeExit() {
-        bool shouldSave;
-        lock (json) shouldSave = isDirty;
-        if (shouldSave) SaveImmediately();
-        saveAction.Dispose();
-    }
-    private void SaveImmediately() {
-        lock (json) {
-            FileUtils.Write(filePath, json.Value.ToString(Formatting.Indented));
-            isDirty = false;
-        }
+        lock (json) FileUtils.Write(filePath, json.Value.ToString(Formatting.Indented));
     }
 }
 
 public static class ConfigUtils {
     public static readonly JsonConfigProvider AppData = new(Path.Combine(Paths.AppDataThenName, "config.json"));
+
+    /// <summary>
+    /// 立即保存所有配置。
+    /// </summary>
+    public static void SaveAll() {
+        foreach (var weakRef in JsonConfigProvider.allProviders) {
+            if (weakRef.TryGetTarget(out var provider)) provider.Save();
+        }
+    }
 
     /// <summary>
     /// 从 secret.json 中读取特定密钥，如果未找到对应密钥则抛出异常。
@@ -136,7 +129,7 @@ public class ConfigEntry<T>(string key, T? defaultValue, IConfigProvider? defaul
 
     public IConfigProvider DefaultProvider => defaultProvider ?? ConfigUtils.AppData;
     /// <summary>
-    /// 当设置项的值实际被改变时触发，参数为新值。
+    /// 当设置项的值被改变时触发，参数为新值。新值可能和旧值相同。
     /// </summary>
     public event Action<T?, IConfigProvider>? Changed;
 
@@ -154,17 +147,13 @@ public class ConfigEntry<T>(string key, T? defaultValue, IConfigProvider? defaul
 
     public void Set(T? value, IConfigProvider? providerOverride = null) {
         var provider = providerOverride ?? DefaultProvider;
-        T? current = Get(provider);
-        if ((current is null && value is null) || (current is not null && value is not null && current.Equals(value))) return; // 值未改变，无需更新
-        provider.SetToCache(key, value, encrypted);
-        provider.Save();
+        provider.Set(key, value, encrypted);
         Changed?.Invoke(value, provider);
     }
     public void Reset(IConfigProvider? providerOverride = null) {
         var provider = providerOverride ?? DefaultProvider;
         if (!provider.HasValue(key)) return; // 值未设置，无需重置
-        provider.RemoveFromCache(key);
-        provider.Save();
+        provider.Remove(key);
         Changed?.Invoke(defaultValue, provider);
     }
     public T? Get(IConfigProvider? providerOverride = null)

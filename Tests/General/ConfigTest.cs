@@ -66,6 +66,21 @@ public class ConfigTest : TestWithFolder {
         await Assert.That(FileUtils.ReadAsString(configFile)).Contains("\"text\": \"plain text 中文\"");
     }
 
+    [Test]
+    public async Task JsonConfigProvider_SaveBeforeExit_WritesPendingChangesImmediately() {
+        string configFile = Path.Combine(tempFolder, "config.json");
+        var provider = new JsonConfigProvider(configFile);
+        var entry = new ConfigEntry<string>("text", "fallback", provider);
+
+        entry.Set("pending 中文");
+        provider.SaveBeforeExit();
+        provider.SaveBeforeExit();
+
+        var reloadedEntry = new ConfigEntry<string>("text", "fallback", new JsonConfigProvider(configFile));
+        await Assert.That(reloadedEntry.Get()).IsEqualTo("pending 中文");
+        await Assert.That(FileUtils.ReadAsString(configFile)).Contains("\"text\": \"pending 中文\"");
+    }
+
     public class TestConfigItem {
         public string Name { get; set; } = "";
         public int Count { get; set; }
