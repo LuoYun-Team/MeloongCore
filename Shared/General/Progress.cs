@@ -54,7 +54,7 @@ public class ProgressProvider {
     private readonly List<(double percentage, ProgressProvider sub)> childrens = [];
 
     /// <summary>
-    /// 拆分一个子项：当该子项完成时，当前进度将增至 <paramref name="value"/>。
+    /// 拆分一个子项：当该子项完成时，进度将从当前值增加至 <paramref name="value"/>。
     /// </summary>
     public ProgressProvider SplitTo(double value) {
         lock (this) return SplitBy(value - progressSum).First();
@@ -116,4 +116,31 @@ public class ProgressProvider {
         }
     }
 
+}
+
+/// <summary>
+/// 监听进度变化，并将观测到的进度节流后传给更新方法。
+/// </summary>
+public class ProgressObserver : IDisposable {
+    private readonly ProgressProvider provider;
+    private readonly RateLimitedAction updateAction;
+
+    public ProgressObserver(ProgressProvider provider, Action<double> updateAction, double minimalIntervalMs = 70) {
+        this.provider = provider;
+        this.updateAction = Throttler.Throttle(() => updateAction(provider.Observe()), 
+            TimeSpan.FromMilliseconds(minimalIntervalMs), leading: true, trailing: true);
+        provider.ProgressChanged += OnProgressChanged;
+    }
+
+    private void OnProgressChanged() {
+        if (!disposed) updateAction.Invoke();
+    }
+
+    private bool disposed = false;
+    public void Dispose() {
+        if (disposed) return;
+        disposed = true;
+        provider.ProgressChanged -= OnProgressChanged;
+        updateAction.Dispose();
+    }
 }

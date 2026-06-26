@@ -43,4 +43,26 @@ public class ProgressTest : TestBase {
         await Assert.That(Math.Abs(progress.Observe() - 2.0 / 3) < 0.000001).IsTrue();
     }
 
+    [Test]
+    public async Task ProgressObserver_监听进度变化并更新UI() {
+        var progress = new ProgressProvider();
+        int updateCount = 0;
+        double updatedProgress = 0;
+
+        using (var observer = new ProgressObserver(progress, value => {
+            updateCount++;
+            updatedProgress = value;
+        }, TimeSpan.FromHours(1))) {
+            progress.Set(0.25);
+
+            await Assert.That(updateCount).IsEqualTo(1);
+            await Assert.That(updatedProgress).IsEqualTo(0.25);
+        }
+
+        progress.Set(0.5);
+        await Task.Delay(50);
+
+        await Assert.That(updateCount).IsEqualTo(1);
+    }
+
 }
