@@ -23,7 +23,9 @@ public class JsonConfigProvider : IConfigProvider {
     private readonly string filePath;
     public JsonConfigProvider(string filePath) {
         this.filePath = filePath;
+        saveAction = Throttler.Throttle(SaveImmediately, TimeSpan.FromMilliseconds(500), leading: false, trailing: true);
         InitJson();
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => SaveBeforeExit();
     }
 
     // 原始文件缓存
@@ -41,22 +43,30 @@ public class JsonConfigProvider : IConfigProvider {
         });
     }
 
+    // ================================= 设置、读取、缓存 =================================
+
     public void SetToCache<T>(string key, T? value, bool encrypted) {
         cache[key] = value;
-        if (value is null) {
-            // 直接在 JSON 中表示为 null
-            json.Value[key] = JValue.CreateNull();
-        } else if (encrypted) {
-            // 需要加密，在 JSON 中保存密文字符串
-            json.Value[key] = CryptographyUtils.AesEncrypt(value is string str ? str : JsonConvert.SerializeObject(value)); // TODO: 加密改为使用识别码
-        } else {
-            // 用 JToken 保留原始结构
-            json.Value[key] = JToken.FromObject(value);
+        lock (json) {
+            if (value is null) {
+                // 直接在 JSON 中表示为 null
+                json.Value[key] = JValue.CreateNull();
+            } else if (encrypted) {
+                // 需要加密，在 JSON 中保存密文字符串
+                json.Value[key] = CryptographyUtils.AesEncrypt(value is string str ? str : JsonConvert.SerializeObject(value)); // TODO: 加密改为使用识别码
+            } else {
+                // 用 JToken 保留原始结构
+                json.Value[key] = JToken.FromObject(value);
+            }
         }
     }
     public T? Read<T>(string key, T? defaultValue, bool encrypted) {
         if (cache.TryGetValue(key, out var cachedValue)) return (T?) cachedValue; // 读取缓存
-        if (!json.Value.TryGetValue(key, out var entry)) return defaultValue; // 未找到该键
+        JToken entry;
+        lock (json) {
+            if (!json.Value.TryGetValue(key, out entry!)) return defaultValue; // 未找到该键
+            entry = entry.DeepClone();
+        }
         try {
             T? result;
             if (entry.Type is JTokenType.Null or JTokenType.Undefined) {
@@ -77,18 +87,38 @@ public class JsonConfigProvider : IConfigProvider {
         }
     }
 
-    public bool HasValue(string key)
-        => json.Value.ContainsKey(key);
+    public bool HasValue(string key) {
+        lock (json) return json.Value.ContainsKey(key);
+    }
     public void RemoveFromCache(string key) {
-        json.Value.Remove(key);
+        lock (json) json.Value.Remove(key);
         cache.TryRemove(key, out _);
     }
     public void DiscardCache() {
-        InitJson();
+        lock (json) InitJson();
         cache.Clear();
     }
-    public void Save()
-        => FileUtils.Write(filePath, json.Value.ToString(Formatting.Indented));
+
+    // ===================================== 保存 =====================================
+
+    private readonly RateLimitedAction saveAction;
+    private bool isDirty = false;
+    public void Save() {
+        lock (json) isDirty = true;
+        saveAction.Invoke();
+    }
+    private void SaveBeforeExit() {
+        bool shouldSave;
+        lock (json) shouldSave = isDirty;
+        if (shouldSave) SaveImmediately();
+        saveAction.Dispose();
+    }
+    private void SaveImmediately() {
+        lock (json) {
+            FileUtils.Write(filePath, json.Value.ToString(Formatting.Indented));
+            isDirty = false;
+        }
+    }
 }
 
 public static class ConfigUtils {
