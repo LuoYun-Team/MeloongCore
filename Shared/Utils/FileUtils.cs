@@ -12,7 +12,8 @@ public static class FileUtils {
     /// </summary>
     public static Stream ReadAsStream(string filePath, Type? type = null) {
         if (type is null) {
-            return ResilientUtils.RetryOn<IOException, Stream>(() => new FileStream(PathUtils.ForApi(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+            return Retrier.Attempt(delay: _ => TimeSpan.FromMilliseconds(200), isRetryAllowed: ex => ex is IOException, func: _ 
+                => new FileStream(PathUtils.ForApi(filePath), FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
         } else {
             return type.Assembly.GetManifestResourceStream(filePath) ?? throw new FileNotFoundException($"Embedded resource \"{filePath}\" was not found.");
         }
@@ -93,7 +94,7 @@ public static class FileUtils {
     public static void Write(string filePath, byte[] content) {
         DirectoryUtils.Create(PathUtils.RemoveLastPart(filePath));
         Logger.Trace($"写入文件：{filePath}（{content.Length} 字节）");
-        ResilientUtils.RetryOn<IOException>(() => {
+        Retrier.Attempt(delay: _ => TimeSpan.FromMilliseconds(200), isRetryAllowed: ex => ex is IOException, action: _ => {
             FileUtils.Delete(filePath);
             File.WriteAllBytes(PathUtils.ForApi(filePath), content);
         });
@@ -105,7 +106,7 @@ public static class FileUtils {
     /// 若文件已存在，则会覆盖原文件。
     /// </summary>
     public static void Write(string filePath, Stream stream) {
-        ResilientUtils.RetryOn<IOException>(() => {
+        Retrier.Attempt(delay: _ => TimeSpan.FromMilliseconds(200), isRetryAllowed: ex => ex is IOException, action: _ => {
             FileUtils.Delete(filePath);
             using FileStream fileStream = FileUtils.CreateAsStream(filePath);
             if (stream.CanSeek && stream.Position != 0) stream.Seek(0, SeekOrigin.Begin);
@@ -120,7 +121,7 @@ public static class FileUtils {
     public static FileStream CreateAsStream(string filePath) {
         DirectoryUtils.Create(PathUtils.RemoveLastPart(filePath));
         Logger.Trace($"创建文件流：{filePath}");
-        return ResilientUtils.RetryOn<IOException, FileStream>(() => {
+        return Retrier.Attempt(delay: _ => TimeSpan.FromMilliseconds(200), isRetryAllowed: ex => ex is IOException, func: _ => {
             FileUtils.Delete(filePath);
             return new FileStream(PathUtils.ForApi(filePath), FileMode.Create);
         });
@@ -130,7 +131,8 @@ public static class FileUtils {
     /// 在临时文件夹下创建一个随机名称的文件，并返回其路径。
     /// </summary>
     public static string CreateRandom()
-        => ResilientUtils.RetryOn<IOException, string>(Path.GetTempFileName);
+        => Retrier.Attempt(delay: _ => TimeSpan.FromMilliseconds(200), isRetryAllowed: ex => ex is IOException, func: _ 
+            => Path.GetTempFileName());
 
     #endregion
 
@@ -156,7 +158,7 @@ public static class FileUtils {
             DirectoryUtils.Create(PathUtils.RemoveLastPart(destFilePath));
             Logger.Trace($"复制文件：{sourceFilePath} → {destFilePath}");
             if (FileUtils.Exists(destFilePath)) FileUtils.SetReadOnly(destFilePath, false);
-            ResilientUtils.RetryOn<IOException>(() 
+            Retrier.Attempt(delay: _ => TimeSpan.FromMilliseconds(200), isRetryAllowed: ex => ex is IOException, action: _ 
                 => File.Copy(PathUtils.ForApi(sourceFilePath), PathUtils.ForApi(destFilePath), true));
         }
     }
@@ -174,7 +176,7 @@ public static class FileUtils {
         } else if (string.Compare(sourceFilePath, destFilePath, ignoreCase: true) == 0) {
             // 路径仅大小写不同
             Logger.Trace($"剪切文件到自身，但大小写不同：{sourceFilePath} → {destFilePath}");
-            ResilientUtils.RetryOn<IOException>(() => {
+            Retrier.Attempt(delay: _ => TimeSpan.FromMilliseconds(200), isRetryAllowed: ex => ex is IOException, action: _ => {
                 var temp = Path.Combine(PathUtils.RemoveLastPart(sourceFilePath), Path.GetRandomFileName());
                 FileUtils.SetReadOnly(sourceFilePath, false);
                 if (FileUtils.Exists(destFilePath)) FileUtils.SetReadOnly(destFilePath, false);
@@ -186,7 +188,7 @@ public static class FileUtils {
             DirectoryUtils.Create(PathUtils.RemoveLastPart(destFilePath));
             FileUtils.Delete(destFilePath);
             Logger.Trace($"剪切文件：{sourceFilePath} → {destFilePath}");
-            ResilientUtils.RetryOn<IOException>(() => {
+            Retrier.Attempt(delay: _ => TimeSpan.FromMilliseconds(200), isRetryAllowed: ex => ex is IOException, action: _ => {
                 FileUtils.SetReadOnly(sourceFilePath, false);
                 if (FileUtils.Exists(destFilePath)) FileUtils.SetReadOnly(destFilePath, false);
                 File.Move(PathUtils.ForApi(sourceFilePath), PathUtils.ForApi(destFilePath));
@@ -220,7 +222,7 @@ public static class FileUtils {
             }
         }
         // 永久删除
-        ResilientUtils.RetryOn<IOException>(() => {
+        Retrier.Attempt(delay: _ => TimeSpan.FromMilliseconds(200), isRetryAllowed: ex => ex is IOException, action: _ => {
             FileUtils.SetReadOnly(filePath, false);
             File.Delete(PathUtils.ForApi(filePath));
         });
@@ -251,12 +253,12 @@ public static class FileUtils {
         }
         // 在 STA 线程中执行删除方法
         if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA) {
-            ResilientUtils.RetryOn<IOException>(Run);
+            Retrier.Attempt(delay: _ => TimeSpan.FromMilliseconds(200), isRetryAllowed: ex => ex is IOException, action: _ => Run());
         } else {
             System.Runtime.ExceptionServices.ExceptionDispatchInfo? internalEx = null; // 捕获内部异常
             var thread = new Thread(() => { 
                 try { 
-                    ResilientUtils.RetryOn<IOException, COMException>(Run); 
+                    Retrier.Attempt(delay: _ => TimeSpan.FromMilliseconds(200), isRetryAllowed: ex => ex is IOException or COMException, action: _ => Run()); 
                 } catch (Exception ex) { 
                     internalEx = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex); 
                 } 
@@ -375,7 +377,7 @@ public static class FileUtils {
         DirectoryUtils.Create(PathUtils.RemoveLastPart(outputFullPath));
         FileUtils.Delete(outputFullPath);
         Logger.Trace($"将文件夹中的内容压缩为 zip 文件：{sourceDirectory} → {outputFullPath}");
-        ResilientUtils.RetryOn<IOException>(()
+        Retrier.Attempt(delay: _ => TimeSpan.FromMilliseconds(200), isRetryAllowed: ex => ex is IOException, action: _ 
             => ZipFile.CreateFromDirectory(PathUtils.ForApi(sourceDirectory), PathUtils.ForApi(outputFullPath)));
     }
 
@@ -401,7 +403,7 @@ public static class FileUtils {
     public static void CreateZipFromFiles(string outputFullPath, IDictionary<string, string> sources) {
         DirectoryUtils.Create(PathUtils.RemoveLastPart(outputFullPath));
         FileUtils.Delete(outputFullPath);
-        using var archive = ResilientUtils.RetryOn<IOException, ZipArchive>(()
+        using var archive = Retrier.Attempt(delay: _ => TimeSpan.FromMilliseconds(200), isRetryAllowed: ex => ex is IOException, func: _ 
             => ZipFile.Open(PathUtils.ForApi(outputFullPath), ZipArchiveMode.Create));
         Logger.Trace($"创建 zip 文件：{sources.Count} 个文件 → {outputFullPath}\n{sources.Select(p => $"- {p.Value} → {p.Key}").Join('\n')}");
         foreach (var pair in sources) archive.CreateEntryFromFile(PathUtils.ForApi(pair.Value), pair.Key.Replace('\\', '/'), CompressionLevel.Optimal);
