@@ -2,7 +2,7 @@ namespace MeloongCore;
 
 /// <summary>
 /// 可合并和重启的工作器。
-/// <para/> 在工作负载运行期间多次调用 <see cref="Run()"/> 会取消当前负载并使用最新令牌重新执行；多次调用也只重新执行一次。
+/// <para/> 在工作负载运行期间多次调用 <see cref="Invoke(CancellationToken)"/> 会取消当前负载并使用最新令牌重新执行；多次调用也只重新执行一次。
 /// </summary>
 public interface IRedoableWorker {
     /// <summary>当前是否正在运行。</summary>
@@ -12,7 +12,7 @@ public interface IRedoableWorker {
     /// <summary>标识上次进入空闲时，并非因为取消或失败，而是正常运行到结束。</summary>
     bool LastSucceeded { get; }
     /// <summary>在工作线程运行工作负载。若当前已在运行，则取消当前负载并使用最新令牌重启。</summary>
-    void Run(CancellationToken cancellationToken = default);
+    void Invoke(CancellationToken cancellationToken = default);
     /// <summary>取消当前运行。</summary>
     void Cancel();
     /// <summary>仅在当前处于运行状态时，等待其完成。</summary>
@@ -57,7 +57,7 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken, TOut> wor
     private readonly ManualResetEventSlim idleEvent = new(initialState: true);
 
     /// <inheritdoc/>
-    public void Run(CancellationToken cancellationToken = default) {
+    public void Invoke(CancellationToken cancellationToken = default) {
         // 接取运行状态
         lock (this) {
             lastToken = cancellationToken;
@@ -69,10 +69,10 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken, TOut> wor
             running = true; idleEvent.Reset();
             realCts = CancellationTokenSource.CreateLinkedTokenSource(lastToken);
         }
-        var th = new Thread(_Run) { IsBackground = true };
+        var th = new Thread(_Invoke) { IsBackground = true };
         th.Start();
     }
-    private void _Run() {
+    private void _Invoke() {
         while (true) {
             try {
                 realCts!.Token.ThrowIfCancellationRequested();
@@ -125,13 +125,13 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken, TOut> wor
 }
 
 /// <inheritdoc />
-public sealed class RedoableWorker<TOut> : RedoableWorkerBase<TOut> {
+public class RedoableWorker<TOut> : RedoableWorkerBase<TOut> {
     public RedoableWorker(Func<CancellationToken, TOut> workload) : base(workload) { }
     public RedoableWorker(Func<TOut> workload) : base(_ => workload()) { }
 }
 
 /// <inheritdoc />
-public sealed class RedoableWorker : RedoableWorkerBase<object?> {
+public class RedoableWorker : RedoableWorkerBase<object?> {
     public RedoableWorker(Action<CancellationToken> workload) : base(ct => { workload(ct); return null; }) { }
     public RedoableWorker(Action workload) : base(_ => { workload(); return null; }) { }
 }

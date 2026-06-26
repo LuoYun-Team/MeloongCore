@@ -121,26 +121,17 @@ public class ProgressProvider {
 /// <summary>
 /// 监听进度变化，并将观测到的进度节流后传给更新方法。
 /// </summary>
-public class ProgressObserver : IDisposable {
+public class ProgressObserver : RateLimitedWorker {
     private readonly ProgressProvider provider;
-    private readonly RateLimitedAction updateAction;
 
-    public ProgressObserver(ProgressProvider provider, Action<double> updateAction, double minimalIntervalMs = 70) {
+    public ProgressObserver(ProgressProvider provider, Action<double> updateAction, double minimalIntervalMs = 70)
+        : base(() => updateAction(provider.Observe()), minimalIntervalMs, RateLimitMode.ImmediateThenMerge) {
         this.provider = provider;
-        this.updateAction = Throttler.Throttle(() => updateAction(provider.Observe()), 
-            TimeSpan.FromMilliseconds(minimalIntervalMs), leading: true, trailing: true);
-        provider.ProgressChanged += OnProgressChanged;
+        provider.ProgressChanged += Invoke;
     }
 
-    private void OnProgressChanged() {
-        if (!disposed) updateAction.Invoke();
-    }
-
-    private bool disposed = false;
-    public void Dispose() {
-        if (disposed) return;
-        disposed = true;
-        provider.ProgressChanged -= OnProgressChanged;
-        updateAction.Dispose();
+    public override void Dispose() {
+        provider.ProgressChanged -= Invoke;
+        base.Dispose();
     }
 }
