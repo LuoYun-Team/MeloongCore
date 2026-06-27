@@ -27,7 +27,7 @@ public class ProgressTest : TestBase {
         sub.Set(0.5);
         sub.Set(0.5);
 
-        await Assert.That(changedCount).IsEqualTo(2);
+        await Assert.That(changedCount).IsEqualTo(1);
     }
 
     [Test]
@@ -52,7 +52,7 @@ public class ProgressTest : TestBase {
         using (var observer = new ProgressObserver(progress, value => {
             updateCount++;
             updatedProgress = value;
-        }, TimeSpan.FromHours(1))) {
+        }, TimeSpan.FromHours(1).TotalMilliseconds)) {
             progress.Set(0.25);
 
             await Assert.That(updateCount).IsEqualTo(1);

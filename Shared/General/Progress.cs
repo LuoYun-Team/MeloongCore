@@ -10,6 +10,7 @@ public class ProgressProvider {
     /// 当进度被改变时触发。
     /// </summary>
     public event Action? ProgressChanged;
+    private void InvokeProgressChanged() => ProgressChanged?.Invoke();
 
     // ===================================== 主项进度 =====================================
 
@@ -32,26 +33,37 @@ public class ProgressProvider {
 
     /// <summary>
     /// 将当前进度设置为指定值。
-    /// 若 <paramref name="skiped"/> 为 true，这段进度的增量值将被计为跳过：当前观测进度不会增加，后续观测进度将增加地更快。
+    /// 若指定了 <paramref name="skiped"/>，这段进度的增量值将被计为跳过：当前观测进度不会增加，后续观测进度将增加地更快。
     /// </summary>
-    public void Set(double value, bool skiped = false) {
+    public void Set(double value, bool skiped = false, ChildrenAction action = ChildrenAction.Finished) {
         bool changed;
-        lock (this) changed = _Set(value, skiped);
-        if (changed) ProgressChanged?.Invoke();
+        lock (this) {
+            changed = _Set(value, skiped);
+            changed |= AssumeChildrenAs(action);
+        }
+        if (changed) InvokeProgressChanged();
     }
     /// <summary>
     /// 将当前进度增加指定值。
-    /// 若 <paramref name="skiped"/> 为 true，这段进度的增量值将被计为跳过：当前观测进度不会增加，后续观测进度将增加地更快。
+    /// 若指定了 <paramref name="skiped"/>，这段进度的增量值将被计为跳过：当前观测进度不会增加，后续观测进度将增加地更快。
+    /// 若指定了 <paramref name="markChildrenAsFinished"/>，当前所有未完成的子项将被视为已完成。
     /// </summary>
-    public void Add(double value, bool skiped = false) {
+    public void Add(double value, bool skiped = false, ChildrenAction action = ChildrenAction.Finished) {
         bool changed;
-        lock (this) changed = _Set(value + progressSum, skiped);
-        if (changed) ProgressChanged?.Invoke();
+        lock (this) {
+            changed = _Set(value + progressSum, skiped);
+            changed |= AssumeChildrenAs(action);
+        }
+        if (changed) InvokeProgressChanged();
     }
+    /// <summary>完成当前项的剩余进度。</summary>
+    public void Finish(ChildrenAction action = ChildrenAction.Finished) => Set(1, skiped: false, action: action);
+    /// <summary>跳过当前项的剩余进度。</summary>
+    public void Skip(ChildrenAction action = ChildrenAction.Skiped) => Set(1, skiped: true, action: action);
 
     // ===================================== 子项进度 =====================================
 
-    private readonly List<(double percentage, ProgressProvider sub)> childrens = [];
+    private readonly List<(double percentage, ProgressProvider child)> childrens = [];
 
     /// <summary>
     /// 拆分一个子项：当该子项完成时，进度将从当前值增加至 <paramref name="value"/>。
@@ -66,16 +78,51 @@ public class ProgressProvider {
     /// </summary>
     public List<ProgressProvider> SplitBy(params double[] percentages) {
         lock (this) {
-            if (percentages.Any(p => p <= 0)) throw new ArgumentException("子项进度必须为正数");
+            if (percentages.Any(p => p <= 0)) throw new ArgumentException("子项进度必须为正数且");
             progressParts.splited += (percentages.Sum() + progressSum).Clamp(0, 1) - progressSum;
             return percentages.Select(percentage => {
                 var sub = new ProgressProvider();
-                sub.ProgressChanged += () => ProgressChanged?.Invoke();
+                sub.ProgressChanged += InvokeProgressChanged;
                 childrens.Add((percentage, sub));
                 return sub;
             }).ToList();
         }
     }
+
+    public enum ChildrenAction {
+        /// <summary>不做任何处理。</summary>
+        None,
+        /// <summary>将未完成的子项的剩余进度视为已完成。</summary>
+        Finished,
+        /// <summary>将未完成的子项的剩余进度视为已跳过。</summary>
+        Skiped
+    }
+    /// <summary>
+    /// 修改所有未完成的子项。
+    /// </summary>
+    /// <returns>是否修改了任意进度不到 1 的子项。</returns>
+    private bool AssumeChildrenAs(ChildrenAction action) {
+        if (action == ChildrenAction.None) return false;
+        lock (this) {
+            bool changed = false;
+            if (childrens.Any(c => c.percentage > 0)) { // 将子项的进度加入主项
+                var mult = progressParts.splited / childrens.Sum(c => c.percentage);
+                childrens.ForEach(c => {
+                    var (subActual, subSkiped) = c.child.GetTotalProgress();
+                    progressParts.actual += mult * c.percentage * (action == ChildrenAction.Finished ? (1 - subSkiped) : subActual);
+                    progressParts.skiped += mult * c.percentage * (action == ChildrenAction.Skiped ? (1 - subActual) : subSkiped);
+                    c.child.ProgressChanged -= InvokeProgressChanged;
+                    if (subActual + subSkiped < 0.9999999) changed = true;
+                });
+            }
+            progressParts.splited = 0;
+            childrens.Clear();
+            return changed;
+        }
+    }
+
+    // ===================================== 观测 =====================================
+
     /// <summary>
     /// 获取包含子项进度的实际总进度值。
     /// </summary>
@@ -85,16 +132,14 @@ public class ProgressProvider {
             if (childrens.Any(c => c.percentage > 0)) { // 将子项的进度加入主项
                 var mult = progressParts.splited / childrens.Sum(c => c.percentage);
                 childrens.ForEach(c => {
-                    var (subActual, subSkiped) = c.sub.GetTotalProgress();
-                    current.actual += subActual * mult * c.percentage;
-                    current.skiped += subSkiped * mult * c.percentage;
+                    var (subActual, subSkiped) = c.child.GetTotalProgress();
+                    current.actual += mult * c.percentage * subActual;
+                    current.skiped += mult * c.percentage * subSkiped;
                 });
             }
             return current;
         }
     }
-
-    // ===================================== 观测 =====================================
 
     private (double actual, double skiped) observedProgress = (0, 0);
     private double incrementProgress = 0;
@@ -123,15 +168,20 @@ public class ProgressProvider {
 /// </summary>
 public class ProgressObserver : RateLimitedWorker {
     private readonly ProgressProvider provider;
-
     public ProgressObserver(ProgressProvider provider, Action<double> updateAction, double minimalIntervalMs = 70)
-        : base(() => updateAction(provider.Observe()), minimalIntervalMs, RateLimitMode.ImmediateThenMerge) {
+        : base(() => Observe(provider, updateAction), minimalIntervalMs, RateLimitMode.ImmediateThenMerge) {
         this.provider = provider;
         provider.ProgressChanged += Invoke;
     }
-
     public override void Dispose() {
         provider.ProgressChanged -= Invoke;
         base.Dispose();
     }
+
+    private static void Observe(ProgressProvider provider, Action<double> updateAction) {
+        double progress = provider.Observe();
+        // TODO: 添加平缓过渡
+        updateAction(progress);
+    }
+
 }

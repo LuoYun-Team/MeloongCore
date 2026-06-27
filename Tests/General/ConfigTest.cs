@@ -6,9 +6,11 @@ public class ConfigTest : TestWithFolder {
     [Test]
     public async Task JsonConfigProvider_字符串列表() {
         string configFile = Path.Combine(tempFolder, "config.json");
-        var entry = new ConfigEntry<List<string>>("list", [], new JsonConfigProvider(configFile));
+        var provider = new JsonConfigProvider(configFile);
+        var entry = new ConfigEntry<List<string>>("list", [], provider);
 
         entry.Set(["Alpha", "中文", "123"]);
+        provider.Save();
 
         var reloadedEntry = new ConfigEntry<List<string>>("list", [], new JsonConfigProvider(configFile));
         var reloadedValue = reloadedEntry.Get();
@@ -20,12 +22,14 @@ public class ConfigTest : TestWithFolder {
     [Test]
     public async Task JsonConfigProvider_自定义类列表() {
         string configFile = Path.Combine(tempFolder, "config.json");
-        var entry = new ConfigEntry<List<TestConfigItem>>("items", [], new JsonConfigProvider(configFile));
+        var provider = new JsonConfigProvider(configFile);
+        var entry = new ConfigEntry<List<TestConfigItem>>("items", [], provider);
 
         entry.Set([
             new() { Name = "Fabric", Count = 2, Enabled = true },
             new() { Name = "Forge 中文", Count = 5, Enabled = false }
         ]);
+        provider.Save();
 
         var reloadedEntry = new ConfigEntry<List<TestConfigItem>>("items", [], new JsonConfigProvider(configFile));
         var reloadedValue = reloadedEntry.Get();
@@ -44,9 +48,11 @@ public class ConfigTest : TestWithFolder {
     [Test]
     public async Task ConfigEntry_SetNull_RoundTripsThroughJson() {
         string configFile = Path.Combine(tempFolder, "config.json");
-        var entry = new ConfigEntry<string>("nullable", "fallback", new JsonConfigProvider(configFile));
+        var provider = new JsonConfigProvider(configFile);
+        var entry = new ConfigEntry<string>("nullable", "fallback", provider);
 
         entry.Set(null);
+        provider.Save();
 
         var reloadedEntry = new ConfigEntry<string>("nullable", "fallback", new JsonConfigProvider(configFile));
         await Assert.That(reloadedEntry.HasValue()).IsTrue();
@@ -57,9 +63,11 @@ public class ConfigTest : TestWithFolder {
     [Test]
     public async Task ConfigEntry_SetString_RoundTripsThroughJson() {
         string configFile = Path.Combine(tempFolder, "config.json");
-        var entry = new ConfigEntry<string>("text", "fallback", new JsonConfigProvider(configFile));
+        var provider = new JsonConfigProvider(configFile);
+        var entry = new ConfigEntry<string>("text", "fallback", provider);
 
         entry.Set("plain text 中文");
+        provider.Save();
 
         var reloadedEntry = new ConfigEntry<string>("text", "fallback", new JsonConfigProvider(configFile));
         await Assert.That(reloadedEntry.Get()).IsEqualTo("plain text 中文");
@@ -67,14 +75,14 @@ public class ConfigTest : TestWithFolder {
     }
 
     [Test]
-    public async Task JsonConfigProvider_SaveBeforeExit_WritesPendingChangesImmediately() {
+    public async Task ConfigUtils_SaveAll_WritesPendingChangesImmediately() {
         string configFile = Path.Combine(tempFolder, "config.json");
         var provider = new JsonConfigProvider(configFile);
         var entry = new ConfigEntry<string>("text", "fallback", provider);
 
         entry.Set("pending 中文");
-        provider.SaveBeforeExit();
-        provider.SaveBeforeExit();
+        ConfigUtils.SaveAll();
+        ConfigUtils.SaveAll();
 
         var reloadedEntry = new ConfigEntry<string>("text", "fallback", new JsonConfigProvider(configFile));
         await Assert.That(reloadedEntry.Get()).IsEqualTo("pending 中文");
