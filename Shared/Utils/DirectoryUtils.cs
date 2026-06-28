@@ -169,7 +169,7 @@ public static class DirectoryUtils {
         folder = PathUtils.ForCompare(folder);
         if (folder == PathUtils.ForCompare(Path.GetPathRoot(folder)))
             throw new UnauthorizedAccessException($"不应操作磁盘根目录：{folder}");
-        if (criticalFolders.Value.Any(f => f.StartsWithF(folder, ignoreCase: true)))
+        if (criticalFolders.Value.Any(f => PathUtils.IsParentOf(f, folder)))
             throw new UnauthorizedAccessException($"不应操作文件夹：{folder}");
     }
     private static readonly Lazy<HashSet<string>> criticalFolders = new(() => new(new[] {
@@ -179,7 +179,6 @@ public static class DirectoryUtils {
         Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
         Environment.GetFolderPath(Environment.SpecialFolder.Windows),
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads") // 下载文件夹没有 SpecialFolder 枚举
-    }.Where(f => f.Contains(Path.VolumeSeparatorChar)) // 当缺少某个文件夹时，GetFolderPath 会返回空字符串（#8636）
-     .Select(f => PathUtils.ForCompare(f))));
+    }.Where(f => f.Contains(Path.VolumeSeparatorChar)))); // 当缺少某个文件夹时，GetFolderPath 会返回空字符串（#8636）
 
 }

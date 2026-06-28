@@ -178,6 +178,15 @@ public static class PathUtils {
 
     #endregion
 
+    /// <summary>
+    /// 判断 <param name="parentPath"/> 是否为 <paramref name="childPath"/> 的父路径，或两者是否相同。
+    /// </summary>
+    public static bool IsParentOf(string parentPath, string childPath) {
+        parentPath = PathUtils.ForCompare(parentPath);
+        childPath = PathUtils.ForCompare(childPath);
+        return childPath.StartsWithF(parentPath + @"\") || childPath == parentPath;
+    }
+
 }
 
 /// <summary>

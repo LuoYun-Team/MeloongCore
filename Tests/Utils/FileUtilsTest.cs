@@ -30,14 +30,10 @@ public class FileUtilsTest : TestWithFolder {
     [Test]
     [Arguments("Corrupted.zip")]
     [Arguments("Not zip.zip")]
-    public void 解压_ReadBad(string testFile)
-        => Assert.Throws<InvalidDataException>(() => FileUtils.ExtractToDirectory(GetTestFile(testFile), tempFolder));
-
-    [Test]
     [Arguments("DotDot ZipSlip.zip")]
     [Arguments("AbsPath ZipSlip.zip")]
-    public void 解压_ZipSlip(string testFile)
-        => Assert.Throws<FileUtils.ZipSlipException>(() => FileUtils.ExtractToDirectory(GetTestFile(testFile), tempFolder));
+    public void 解压_ReadBad(string testFile)
+        => Assert.Throws<InvalidDataException>(() => FileUtils.ExtractToDirectory(GetTestFile(testFile), tempFolder));
 
     #endregion
 

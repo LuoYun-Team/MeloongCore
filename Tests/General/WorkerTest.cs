@@ -32,7 +32,7 @@ public class WorkerTest : TestBase {
             if (currentRun == 1) {
                 firstStarted.Set();
                 while (true) {
-                    ct.ThrowIfCancellationRequested();
+                    ct?.ThrowIfCancellationRequested();
                     Thread.Sleep(10);
                 }
             }
