@@ -21,17 +21,27 @@ public interface IRedoableWorker {
 }
 
 /// <inheritdoc cref="IRedoableWorker"/>
-public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken, TOut> workload) : IRedoableWorker {
+public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken?, ProgressProvider?, TOut> workload, ProgressProvider? p = null) : IRedoableWorker {
 
-    // ============================================ 状态 ============================================
+    // ============================================ 状态与事件 ============================================
 
     /// <inheritdoc/>
     public bool Running { get { lock (this) return running; } }
     private bool running;
+    /// <summary>从空闲状态进入运行状态时触发。</summary>
+    public event Action? Started;
+    /// <summary>运行结束并进入空闲状态时触发。</summary>
+    public event Action? Stopped;
 
     /// <inheritdoc/>
     public bool HasSucceeded { get { lock (this) return hasSucceeded; } }
     private bool hasSucceeded;
+    /// <summary>工作负载成功完成时触发，参数为返回值。这可能会在重启前触发。</summary>
+    public event Action<TOut>? Succeeded;
+    /// <summary>工作负载执行失败时触发，参数为发生的异常。这可能会在重启前触发。</summary>
+    public event Action<Exception>? Failed;
+    /// <summary>运行被取消时触发。这可能会在重启前触发。</summary>
+    public event Action? Canceled;
 
     /// <inheritdoc/>
     public bool LastSucceeded { get { lock (this) return lastSucceeded; } }
@@ -73,10 +83,12 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken, TOut> wor
         th.Start();
     }
     private void _Invoke() {
+        Started?.Invoke();
         while (true) {
             try {
                 realCts!.Token.ThrowIfCancellationRequested();
-                TOut result = workload(realCts.Token); // 实际的执行
+                p?.Reset();
+                TOut result = workload(realCts.Token, p); // 实际的执行
                 realCts.Token.ThrowIfCancellationRequested();
                 lock (this) {
                     realCts?.Dispose();
@@ -91,9 +103,14 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken, TOut> wor
                     hasSucceeded = true;
                     running = false; idleEvent.Set();
                 }
+                Succeeded?.Invoke(result);
             } catch (Exception ex) {
-                if (!ex.IsCanceled()) 
+                if (ex.IsCanceled()) {
+                    Canceled?.Invoke();
+                } else {
+                    Failed?.Invoke(ex);
                     Logger.Log(ex, $"工作线程执行失败{(pendingRedo ? "，但即将重启，或可忽略" : "")}", pendingRedo ? LogLevel.Info : LogLevel.Warn);
+                }
                 lock (this) {
                     realCts?.Dispose();
                     if (pendingRedo) { // 接取重启请求
@@ -106,8 +123,9 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken, TOut> wor
                     running = false; idleEvent.Set();
                 }
             }
-            return;
+            break;
         }
+        Stopped?.Invoke();
     }
 
     /// <inheritdoc/>
@@ -126,12 +144,14 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken, TOut> wor
 
 /// <inheritdoc />
 public class RedoableWorker<TOut> : RedoableWorkerBase<TOut> {
-    public RedoableWorker(Func<CancellationToken, TOut> workload) : base(workload) { }
-    public RedoableWorker(Func<TOut> workload) : base(_ => workload()) { }
+    public RedoableWorker(Func<CancellationToken?, ProgressProvider?, TOut> workload) : base(workload) { }
+    public RedoableWorker(Func<CancellationToken?, TOut> workload) : base((c, _) => workload(c)) { }
+    public RedoableWorker(Func<TOut> workload) : base((_, _) => workload()) { }
 }
 
 /// <inheritdoc />
 public class RedoableWorker : RedoableWorkerBase<object?> {
-    public RedoableWorker(Action<CancellationToken> workload) : base(ct => { workload(ct); return null; }) { }
-    public RedoableWorker(Action workload) : base(_ => { workload(); return null; }) { }
+    public RedoableWorker(Func<CancellationToken?, ProgressProvider?, object?> workload) : base(workload) { }
+    public RedoableWorker(Action<CancellationToken?> workload) : base((c, _) => { workload(c); return null; }) { }
+    public RedoableWorker(Action workload) : base((_, _) => { workload(); return null; }) { }
 }

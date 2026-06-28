@@ -62,6 +62,18 @@ public class ProgressProvider {
     public void Finish(ChildrenAction action = ChildrenAction.Finished) => Set(1, skiped: false, action: action);
     /// <summary>跳过当前项的剩余进度。</summary>
     public void Skip(ChildrenAction action = ChildrenAction.Skiped) => Set(1, skiped: true, action: action);
+    /// <summary>
+    /// 重置当前进度，并清除所有子项。
+    /// </summary>
+    public void Reset() {
+        bool changed;
+        lock (this) {
+            changed = progressSum > 0;
+            progressParts = (0, 0, 0);
+            childrens.Clear();
+        }
+        if (changed) InvokeProgressChanged();
+    }
 
     // ===================================== 子项进度 =====================================
 
