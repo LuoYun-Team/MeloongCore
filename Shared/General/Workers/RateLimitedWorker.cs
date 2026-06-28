@@ -21,7 +21,7 @@ public class RateLimitedWorker(Action workload, double minimalIntervalMs, RateLi
         RateLimitMode.ImmediateThenIgnore => Debouncer.Debounce(workload, TimeSpan.FromMilliseconds(minimalIntervalMs), leading: true, trailing: false)
     };
 
-    public void Invoke() {
+    public void Start() {
         if (!disposed) action.Invoke();
     }
 

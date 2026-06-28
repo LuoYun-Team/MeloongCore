@@ -7,10 +7,11 @@ namespace MeloongCore;
 public class ProgressProvider {
 
     /// <summary>
-    /// 当进度被改变时触发。
+    /// 当原始进度可能被改变时触发。
     /// </summary>
-    public event Action? ProgressChanged;
-    private void InvokeProgressChanged() => ProgressChanged?.Invoke();
+    public event Action<(double actual, double skiped)>? ProgressChanged;
+    private void InvokeProgressChanged((double actual, double skiped) raw) => ProgressChanged?.Invoke(raw);
+    private void InvokeProgressChanged() => InvokeProgressChanged(GetRaw());
 
     // ===================================== 主项进度 =====================================
 
@@ -122,7 +123,7 @@ public class ProgressProvider {
             if (childrens.Any(c => c.percentage > 0)) { // 将子项的进度加入主项
                 var mult = progressParts.splited / childrens.Sum(c => c.percentage);
                 childrens.ForEach(c => {
-                    var (subActual, subSkiped) = c.child.GetTotalProgress();
+                    var (subActual, subSkiped) = c.child.GetRaw();
                     progressParts.actual += mult * c.percentage * (action == ChildrenAction.Finished ? (1 - subSkiped) : subActual);
                     progressParts.skiped += mult * c.percentage * (action == ChildrenAction.Skiped ? (1 - subActual) : subSkiped);
                     c.child.ProgressChanged -= InvokeProgressChanged;
@@ -140,13 +141,13 @@ public class ProgressProvider {
     /// <summary>
     /// 获取包含子项进度的实际总进度值。
     /// </summary>
-    private (double actual, double skiped) GetTotalProgress() {
+    public (double actual, double skiped) GetRaw() {
         lock (this) {
             (double actual, double skiped) current = (progressParts.actual, progressParts.skiped);
             if (childrens.Any(c => c.percentage > 0)) { // 将子项的进度加入主项
                 var mult = progressParts.splited / childrens.Sum(c => c.percentage);
                 childrens.ForEach(c => {
-                    var (subActual, subSkiped) = c.child.GetTotalProgress();
+                    var (subActual, subSkiped) = c.child.GetRaw();
                     current.actual += mult * c.percentage * subActual;
                     current.skiped += mult * c.percentage * subSkiped;
                 });
@@ -160,9 +161,9 @@ public class ProgressProvider {
     /// <summary>
     /// 获取一个在多次观测之间必定单调递增的进度值，范围为 [0, 1]。
     /// </summary>
-    public double Observe() {
+    public double GetIncrement() {
         lock (this) {
-            (double actual, double skiped) current = GetTotalProgress();
+            (double actual, double skiped) current = GetRaw();
             if (current == observedProgress) return incrementProgress; // 未改变
             if (current.actual + current.skiped > 0.9999999) { // 已完成
                 incrementProgress = 1;
@@ -185,15 +186,15 @@ public class ProgressObserver : RateLimitedWorker {
     public ProgressObserver(ProgressProvider provider, Action<double> updateAction, double minimalIntervalMs = 70)
         : base(() => Observe(provider, updateAction), minimalIntervalMs, RateLimitMode.ImmediateThenMerge) {
         this.provider = provider;
-        provider.ProgressChanged += Invoke;
+        provider.ProgressChanged += StartObserver;
     }
     public override void Dispose() {
-        provider.ProgressChanged -= Invoke;
+        provider.ProgressChanged -= StartObserver;
         base.Dispose();
     }
-
+    private void StartObserver((double actual, double skiped) raw) => Start();
     private static void Observe(ProgressProvider provider, Action<double> updateAction) {
-        double progress = provider.Observe();
+        double progress = provider.GetIncrement();
         // TODO: 添加平缓过渡
         updateAction(progress);
     }
