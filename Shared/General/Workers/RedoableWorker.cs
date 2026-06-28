@@ -68,6 +68,7 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken?, Progress
     public TOut LastResult {
         get {
             lock (this) {
+                if (typeof(TOut) == typeof(NoType)) throw new InvalidOperationException("该 Worker 没有返回值。");
                 if (!hasSucceeded) throw new InvalidOperationException("从未成功完成过。");
                 return lastResult == null ? default! : (TOut) lastResult;
             }
@@ -196,7 +197,7 @@ public class RedoableWorker<TOut> : RedoableWorkerBase<TOut> {
 }
 
 /// <inheritdoc />
-public class RedoableWorker : RedoableWorkerBase<object?> {
+public class RedoableWorker : RedoableWorkerBase<NoType?> {
     public RedoableWorker(Action<CancellationToken?, ProgressProvider?> workload, [CallerMemberName] string creatorMemberName = "")
         : base((c, p) => { workload(c, p); return null; }, creatorMemberName: creatorMemberName) { }
     public RedoableWorker(Action<CancellationToken?> workload, [CallerMemberName] string creatorMemberName = "")
@@ -204,3 +205,6 @@ public class RedoableWorker : RedoableWorkerBase<object?> {
     public RedoableWorker(Action workload, [CallerMemberName] string creatorMemberName = "")
         : base((_, _) => { workload(); return null; }, creatorMemberName: creatorMemberName) { }
 }
+
+/// <summary>指示没有该类型，用于泛型参数。</summary>
+public class NoType { }
