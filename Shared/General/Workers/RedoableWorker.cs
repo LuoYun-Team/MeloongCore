@@ -2,7 +2,7 @@ namespace MeloongCore;
 
 /// <summary>
 /// 可合并和重启的工作器。
-/// <para/> 在工作负载运行期间多次调用 <see cref="Invoke(CancellationToken)"/> 会取消当前负载并使用最新令牌重新执行；多次调用也只重新执行一次。
+/// <para/> 在工作负载运行期间多次调用 <see cref="Start(CancellationToken)"/> 会取消当前负载并使用最新令牌重新执行；多次调用也只重新执行一次。
 /// </summary>
 public interface IRedoableWorker {
     /// <summary>当前是否正在运行。</summary>
@@ -12,16 +12,20 @@ public interface IRedoableWorker {
     /// <summary>标识上次进入空闲时，并非因为取消或失败，而是正常运行到结束。</summary>
     bool LastSucceeded { get; }
     /// <summary>在工作线程运行工作负载。若当前已在运行，则取消当前负载并使用最新令牌重启。</summary>
-    void Invoke(CancellationToken cancellationToken = default);
+    void Start(CancellationToken cancellationToken = default);
     /// <summary>取消当前运行。</summary>
     void Cancel();
-    /// <summary>仅在当前处于运行状态时，等待其完成。</summary>
+    /// <summary>仅在当前处于运行状态时，等待其完成。
     /// <returns>若未超时则返回 true。</returns>
-    bool WaitIfRunning(int millisecondsTimeout = -1);
+    bool WaitIfRunning(int millisecondsTimeout = -1, CancellationToken cancellationToken = default);
+    /// <summary>仅在当前处于运行状态时，异步等待其完成。
+    /// <returns>若未超时则返回 true。</returns>
+    Task<bool> WaitIfRunningAsync(int millisecondsTimeout = -1, CancellationToken cancellationToken = default);
 }
 
+// TODO: 现在的可观测性不佳，考虑增加调用方信息以及自身名称等，输出到日志，例如 CallerArgumentExpression
 /// <inheritdoc cref="IRedoableWorker"/>
-public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken?, ProgressProvider?, TOut> workload, ProgressProvider? p = null) : IRedoableWorker {
+public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken?, ProgressProvider?, TOut> workload, ProgressProvider? progress = null) : IRedoableWorker {
 
     // ============================================ 状态与事件 ============================================
 
@@ -36,11 +40,11 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken?, Progress
     /// <inheritdoc/>
     public bool HasSucceeded { get { lock (this) return hasSucceeded; } }
     private bool hasSucceeded;
-    /// <summary>工作负载成功完成时触发，参数为返回值。这可能会在重启前触发。</summary>
+    /// <summary>工作负载成功完成时触发，参数为返回值。<para/>这可能会在重启前触发。</summary>
     public event Action<TOut>? Succeeded;
-    /// <summary>工作负载执行失败时触发，参数为发生的异常。这可能会在重启前触发。</summary>
+    /// <summary>工作负载执行失败时触发，参数为发生的异常。<para/>这可能会在重启前触发。</summary>
     public event Action<Exception>? Failed;
-    /// <summary>运行被取消时触发。这可能会在重启前触发。</summary>
+    /// <summary>运行被取消时触发。<para/>这可能会在重启前触发。</summary>
     public event Action? Canceled;
 
     /// <inheritdoc/>
@@ -58,6 +62,8 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken?, Progress
     }
     private object? lastResult;
 
+    public readonly ProgressProvider Progress = progress ?? new ProgressProvider();
+
     private bool pendingRedo;
 
     // =========================================== 运行与取消 ===========================================
@@ -67,7 +73,7 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken?, Progress
     private readonly ManualResetEventSlim idleEvent = new(initialState: true);
 
     /// <inheritdoc/>
-    public void Invoke(CancellationToken cancellationToken = default) {
+    public void Start(CancellationToken cancellationToken = default) {
         // 接取运行状态
         lock (this) {
             lastToken = cancellationToken;
@@ -87,9 +93,10 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken?, Progress
         while (true) {
             try {
                 realCts!.Token.ThrowIfCancellationRequested();
-                p?.Reset();
-                TOut result = workload(realCts.Token, p); // 实际的执行
+                Progress?.Reset();
+                TOut result = workload(realCts.Token, Progress); // 实际的执行
                 realCts.Token.ThrowIfCancellationRequested();
+                Succeeded?.Invoke(result);
                 lock (this) {
                     realCts?.Dispose();
                     if (pendingRedo) { // 接取重启请求
@@ -102,8 +109,8 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken?, Progress
                     lastResult = result;
                     hasSucceeded = true;
                     running = false; idleEvent.Set();
+                    Progress?.Finish();
                 }
-                Succeeded?.Invoke(result);
             } catch (Exception ex) {
                 if (ex.IsCanceled()) {
                     Canceled?.Invoke();
@@ -121,6 +128,7 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken?, Progress
                     realCts = null;
                     lastSucceeded = false;
                     running = false; idleEvent.Set();
+                    Progress?.Skip();
                 }
             }
             break;
@@ -137,8 +145,21 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken?, Progress
     }
 
     /// <inheritdoc/>
-    public bool WaitIfRunning(int millisecondsTimeout = -1)
-        => idleEvent.Wait(millisecondsTimeout);
+    public bool WaitIfRunning(int millisecondsTimeout = -1, CancellationToken cancellationToken = default)
+        => idleEvent.Wait(millisecondsTimeout, cancellationToken);
+    /// <inheritdoc/>
+    public async Task<bool> WaitIfRunningAsync(int millisecondsTimeout = -1, CancellationToken cancellationToken = default) {
+        cancellationToken.ThrowIfCancellationRequested();
+        var completionSource = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var waitHandle = ThreadPool.RegisterWaitForSingleObject(idleEvent.WaitHandle,
+            (_, timedOut) => completionSource.TrySetResult(!timedOut), null, millisecondsTimeout, executeOnlyOnce: true);
+        using var cancellationRegistration = cancellationToken.Register(() => completionSource.TrySetCanceled(cancellationToken));
+        try {
+            return await completionSource.Task;
+        } finally {
+            waitHandle.Unregister(null);
+        }
+    }
 
 }
 
@@ -151,7 +172,7 @@ public class RedoableWorker<TOut> : RedoableWorkerBase<TOut> {
 
 /// <inheritdoc />
 public class RedoableWorker : RedoableWorkerBase<object?> {
-    public RedoableWorker(Func<CancellationToken?, ProgressProvider?, object?> workload) : base(workload) { }
+    public RedoableWorker(Action<CancellationToken?, ProgressProvider?> workload) : base((c, p) => { workload(c, p); return null; }) { }
     public RedoableWorker(Action<CancellationToken?> workload) : base((c, _) => { workload(c); return null; }) { }
     public RedoableWorker(Action workload) : base((_, _) => { workload(); return null; }) { }
 }

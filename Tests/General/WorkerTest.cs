@@ -12,7 +12,7 @@ public class WorkerTest : TestBase {
             started.Set();
         });
 
-        worker.Invoke();
+        worker.Start();
 
         await Assert.That(started.Wait(3000)).IsTrue();
         await Assert.That(worker.WaitIfRunning(3000)).IsTrue();
@@ -38,10 +38,10 @@ public class WorkerTest : TestBase {
             }
         });
 
-        worker.Invoke();
+        worker.Start();
         await Assert.That(firstStarted.Wait(3000)).IsTrue();
-        worker.Invoke();
-        worker.Invoke();
+        worker.Start();
+        worker.Start();
 
         await Assert.That(worker.WaitIfRunning(3000)).IsTrue();
         await Assert.That(runCount).IsEqualTo(2);
