@@ -4,6 +4,82 @@ namespace MeloongCore;
 public static class TaskUtils {
 
     /// <summary>
+    /// 并行执行所有任务。
+    /// </summary>
+    public static Task WhenAll(IEnumerable<Func<ProgressProvider?, Task>> tasks, ProgressProvider? progress = null) {
+        var taskList = tasks.ToList();
+        if (!taskList.Any()) {
+            progress?.Skip();
+            return Task.CompletedTask;
+        }
+        // 实际分割
+        var progressEach = 1d / taskList.Count;
+        return Task.WhenAll(taskList.Select(async (task, index) => {
+            var cp = progress?.SplitBy(progressEach)[0];
+            await task(cp).ConfigureAwait(false);
+            cp?.Finish();
+        }));
+    }
+    /// <summary>
+    /// 并行执行所有任务并返回结果。
+    /// </summary>
+    public static Task<TResult[]> WhenAll<TResult>(IEnumerable<Func<ProgressProvider?, Task<TResult>>> tasks, ProgressProvider? progress = null) {
+        var taskList = tasks.ToList();
+        if (!taskList.Any()) {
+            progress?.Skip();
+            return Task.FromResult(Array.Empty<TResult>());
+        }
+        // 实际分割
+        var progressEach = 1d / taskList.Count;
+        return Task.WhenAll(taskList.Select(async (task, index) => {
+            var cp = progress?.SplitBy(progressEach)[0];
+            var result = await task(cp).ConfigureAwait(false);
+            cp?.Finish();
+            return result;
+        }));
+    }
+    /// <summary>
+    /// 并行执行所有任务。
+    /// </summary>
+    public static Task WhenAll(IEnumerable<Task> tasks, ProgressProvider? progress = null)
+        => WhenAll(tasks.Select(task => new Func<ProgressProvider?, Task>(_ => task)), progress);
+    /// <summary>
+    /// 并行执行所有任务并返回结果。
+    /// </summary>
+    public static Task<TResult[]> WhenAll<TResult>(IEnumerable<Task<TResult>> tasks, ProgressProvider? progress = null)
+        => WhenAll(tasks.Select(task => new Func<ProgressProvider?, Task<TResult>>(_ => task)), progress);
+
+    public static void ForEach<T>(IEnumerable<T> source, Action<T> body)
+        => Parallel.ForEach(source, body);
+    public static async Task ForEachAsync<T>(IEnumerable<T> source, int maxDegreeOfParallelism, Func<T, ProgressProvider?, Task> body,
+        CancellationToken cancellationToken = default, ProgressProvider? progress = null) {
+        using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var token = linkedCancellationTokenSource.Token;
+        var enumeratorLock = new object();
+        using var enumerator = source.GetEnumerator();
+        async Task WorkerAsync(ProgressProvider? cp) {
+            try {
+                while (true) {
+                    T item;
+                    lock (enumeratorLock) {
+                        token.ThrowIfCancellationRequested();
+                        if (!enumerator.MoveNext()) return;
+                        item = enumerator.Current;
+                    }
+                    await body(item, cp).ConfigureAwait(false);
+                }
+            } catch {
+                try {
+                    linkedCancellationTokenSource.Cancel(); // 让尚未开始的 worker 尽快停止
+                } catch {
+                }
+                throw;
+            }
+        }
+        await TaskUtils.WhenAll(Enumerable.Repeat(WorkerAsync, maxDegreeOfParallelism), progress).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// 静默运行程序并等待其结束，返回其输出和退出码。
     /// 支持 notepad、git 等命令。
     /// 超时或启动失败会抛出异常。
@@ -44,35 +120,6 @@ public static class TaskUtils {
             throw new TimeoutException($"运行程序超时：{file} {arguments}");
         }
         return (await outputTask + await errorTask, program.ExitCode);
-    }
-
-    public static void ForEach<T>(IEnumerable<T> source, Action<T> body)
-        => Parallel.ForEach(source, body);
-    public static async Task ForEachAsync<T>(IEnumerable<T> source, int maxDegreeOfParallelism, Func<T, CancellationToken, Task> body, CancellationToken cancellationToken = default) {
-        using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var token = linkedCancellationTokenSource.Token;
-        var enumeratorLock = new object();
-        using var enumerator = source.GetEnumerator();
-        async Task WorkerAsync() {
-            try {
-                while (true) {
-                    T item;
-                    lock (enumeratorLock) {
-                        token.ThrowIfCancellationRequested();
-                        if (!enumerator.MoveNext()) return;
-                        item = enumerator.Current;
-                    }
-                    await body(item, token).ConfigureAwait(false);
-                }
-            } catch {
-                try {
-                    linkedCancellationTokenSource.Cancel(); // 让尚未开始的 worker 尽快停止
-                } catch {
-                }
-                throw;
-            }
-        }
-        await Task.WhenAll([.. Enumerable.Range(0, maxDegreeOfParallelism).Select(_ => Task.Run(WorkerAsync))]).ConfigureAwait(false);
     }
 
 }

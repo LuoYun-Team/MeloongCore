@@ -16,6 +16,8 @@ public class ProgressProvider {
 
     private (double actual, double skiped, double splited) progressParts = (0, 0, 0);
     private double progressSum => progressParts.actual + progressParts.skiped + progressParts.splited;
+    public bool Finished => progressParts.actual + progressParts.skiped > 0.9999999;
+
     private bool _Set(double value, bool skiped) {
         value = value.Clamp(0, 1);
         double delta = value - progressSum;
