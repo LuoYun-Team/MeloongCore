@@ -16,7 +16,7 @@ public static class TaskUtils {
         var progressEach = 1d / taskList.Count;
         return Task.WhenAll(taskList.Select(async (task, index) => {
             var cp = progress?.SplitBy(progressEach)[0];
-            await task(cp).ConfigureAwait(false);
+            await task(cp).NoCapture();
             cp?.Finish();
         }));
     }
@@ -33,7 +33,7 @@ public static class TaskUtils {
         var progressEach = 1d / taskList.Count;
         return Task.WhenAll(taskList.Select(async (task, index) => {
             var cp = progress?.SplitBy(progressEach)[0];
-            var result = await task(cp).ConfigureAwait(false);
+            var result = await task(cp).NoCapture();
             cp?.Finish();
             return result;
         }));
@@ -66,7 +66,7 @@ public static class TaskUtils {
                         if (!enumerator.MoveNext()) return;
                         item = enumerator.Current;
                     }
-                    await body(item, cp).ConfigureAwait(false);
+                    await body(item, cp).NoCapture();
                 }
             } catch {
                 try {
@@ -76,7 +76,7 @@ public static class TaskUtils {
                 throw;
             }
         }
-        await TaskUtils.WhenAll(Enumerable.Repeat(WorkerAsync, maxDegreeOfParallelism), progress).ConfigureAwait(false);
+        await TaskUtils.WhenAll(Enumerable.Repeat(WorkerAsync, maxDegreeOfParallelism), progress).NoCapture();
     }
 
     /// <summary>
@@ -110,7 +110,7 @@ public static class TaskUtils {
         var timeoutTask = Task.Delay(hasTimeout ? timeoutMs!.Value : Timeout.Infinite);
         var cancelTask = Task.Delay(Timeout.Infinite, cancellationToken);
         Logger.Trace($"等待程序 {program.Id} 完成");
-        var completedTask = await Task.WhenAny(task, timeoutTask, cancelTask);
+        var completedTask = await Task.WhenAny(task, timeoutTask, cancelTask).NoCapture();
         if (completedTask != task) {
             try {
                 if (!program.HasExited) program.Kill();
@@ -119,7 +119,7 @@ public static class TaskUtils {
             if (completedTask == cancelTask) throw new OperationCanceledException(cancellationToken);
             throw new TimeoutException($"运行程序超时：{file} {arguments}");
         }
-        return (await outputTask + await errorTask, program.ExitCode);
+        return (await outputTask.NoCapture() + await errorTask.NoCapture(), program.ExitCode);
     }
 
 }

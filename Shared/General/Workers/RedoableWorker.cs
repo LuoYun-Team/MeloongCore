@@ -178,7 +178,7 @@ public abstract class RedoableWorkerBase<TOut>(Func<CancellationToken?, Progress
             (_, timedOut) => completionSource.TrySetResult(!timedOut), null, millisecondsTimeout, executeOnlyOnce: true);
         using var cancellationRegistration = cancellationToken.Register(() => completionSource.TrySetCanceled(cancellationToken));
         try {
-            return await completionSource.Task;
+            return await completionSource.Task.NoCapture();
         } finally {
             waitHandle.Unregister(null);
         }
