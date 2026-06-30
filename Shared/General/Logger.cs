@@ -77,6 +77,12 @@ public static class Logger {
     public static void SendToDebug(Exception ex, string? message = null, LogLevel level = LogLevel.Error, [CallerFilePath] string filePath = "")
         => Debug.WriteLine($"{BaseLogger.GetLogPrefix(level, filePath)}{(message is null ? "" : $"{message}：")}{ex.GetDisplay(true)}");
 
+    /// <summary>
+    /// 记录当前堆栈信息。
+    /// </summary>
+    public static void StackTrace(LogLevel level = LogLevel.Trace, [CallerFilePath] string filePath = "")
+        => Instance.Log(null, new StackTrace(skipFrames: 1, fNeedFileInfo: true).ToString(), level, LogBehavior.None, filePath);
+
     #region 内插优化
 
     // VB.NET：由于不兼容 InterpolatedStringHandler，只能手动使用 Lambda

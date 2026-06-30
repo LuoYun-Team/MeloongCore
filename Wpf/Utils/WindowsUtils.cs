@@ -1,7 +1,7 @@
 using System.Security.Principal;
 
 namespace MeloongCore;
-public static class SystemUtils {
+public static class WindowsUtils {
 
     /// <summary>
     /// 当前程序是否拥有管理员权限。
