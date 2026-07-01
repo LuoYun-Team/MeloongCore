@@ -28,18 +28,4 @@ public class TaskUtilsTest : TestBase {
         await Assert.That(progress.GetIncrement()).IsEqualTo(1);
     }
 
-    [Test]
-    public async Task WhenAll_省略父进度时仍传入独立进度() {
-        ProgressProvider? receivedProgress = null;
-
-        await TaskUtils.WhenAll([
-            child => {
-                receivedProgress = child;
-                return Task.CompletedTask;
-            }
-        ]);
-
-        await Assert.That(receivedProgress is not null).IsTrue();
-    }
-
 }

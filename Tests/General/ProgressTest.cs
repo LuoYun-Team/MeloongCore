@@ -21,13 +21,19 @@ public class ProgressTest : TestBase {
     public async Task ProgressChanged_子进度改变时向父级传播() {
         var progress = new ProgressProvider();
         int changedCount = 0;
-        progress.ProgressChanged += _ => changedCount++;
+        (double actual, double skiped) changedProgress = default;
+        progress.ProgressChanged += value => {
+            changedCount++;
+            changedProgress = value;
+        };
 
         var sub = progress.SplitBy(0.5).Single();
         sub.Set(0.5);
         sub.Set(0.5);
 
         await Assert.That(changedCount).IsEqualTo(1);
+        await Assert.That(changedProgress.actual).IsEqualTo(0.25);
+        await Assert.That(changedProgress.skiped).IsEqualTo(0);
     }
 
     [Test]

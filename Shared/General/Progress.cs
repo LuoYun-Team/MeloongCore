@@ -10,14 +10,16 @@ public class ProgressProvider {
     /// 当原始进度可能被改变时触发。
     /// </summary>
     public event Action<(double actual, double skiped)>? ProgressChanged;
-    private void InvokeProgressChanged((double actual, double skiped) raw) => ProgressChanged?.Invoke(raw);
-    private void InvokeProgressChanged() => InvokeProgressChanged(GetRaw());
+    private event Action? ChildProgressChanged;
+    private void InvokeProgressChanged() {
+        ProgressChanged?.Invoke(GetRaw());
+        ChildProgressChanged?.Invoke();
+    }
 
     // ===================================== 主项进度 =====================================
 
     private (double actual, double skiped, double splited) progressParts = (0, 0, 0);
     private double progressSum => progressParts.actual + progressParts.skiped + progressParts.splited;
-    public bool Finished => progressParts.actual + progressParts.skiped > 0.9999999;
 
     private bool _Set(double value, bool skiped) {
         value = value.Clamp(0, 1);
@@ -71,6 +73,7 @@ public class ProgressProvider {
         lock (this) {
             changed = progressSum > 0;
             progressParts = (0, 0, 0);
+            childrens.ForEach(c => c.child.ChildProgressChanged -= InvokeProgressChanged);
             childrens.Clear();
         }
         if (changed) InvokeProgressChanged();
@@ -97,7 +100,7 @@ public class ProgressProvider {
             progressParts.splited += (percentages.Sum() + progressSum).Clamp(0, 1) - progressSum;
             return percentages.Select(percentage => {
                 var sub = new ProgressProvider();
-                sub.ProgressChanged += InvokeProgressChanged;
+                sub.ChildProgressChanged += InvokeProgressChanged;
                 childrens.Add((percentage, sub));
                 return sub;
             }).ToList();
@@ -126,7 +129,7 @@ public class ProgressProvider {
                     var (subActual, subSkiped) = c.child.GetRaw();
                     progressParts.actual += mult * c.percentage * (action == ChildrenAction.Finished ? (1 - subSkiped) : subActual);
                     progressParts.skiped += mult * c.percentage * (action == ChildrenAction.Skiped ? (1 - subActual) : subSkiped);
-                    c.child.ProgressChanged -= InvokeProgressChanged;
+                    c.child.ChildProgressChanged -= InvokeProgressChanged;
                     if (subActual + subSkiped < 0.9999999) changed = true;
                 });
             }
