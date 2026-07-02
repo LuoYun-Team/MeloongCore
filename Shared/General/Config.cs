@@ -40,7 +40,7 @@ public class JsonConfigProvider : IConfigProvider {
 
     public void Set<T>(string key, T? value, bool encrypted) {
         cache[key] = value;
-        lock (json) {
+        lock (this) {
             if (value is null) {
                 // 直接在 JSON 中表示为 null
                 json.Value[key] = JValue.CreateNull();
@@ -62,7 +62,7 @@ public class JsonConfigProvider : IConfigProvider {
     public T? Read<T>(string key, T? defaultValue, bool encrypted) {
         if (cache.TryGetValue(key, out var cachedValue)) return (T?) cachedValue; // 读取缓存
         JToken entry;
-        lock (json) {
+        lock (this) {
             if (!json.Value.TryGetValue(key, out entry!)) return defaultValue; // 未找到该键
             entry = entry.DeepClone();
         }
@@ -86,15 +86,15 @@ public class JsonConfigProvider : IConfigProvider {
     }
 
     public bool HasValue(string key) {
-        lock (json) return json.Value.ContainsKey(key);
+        lock (this) return json.Value.ContainsKey(key);
     }
     public void Remove(string key) {
-        lock (json) json.Value.Remove(key);
+        lock (this) json.Value.Remove(key);
         cache.TryRemove(key, out _);
         MakeDirty();
     }
     public void DiscardCache() {
-        lock (json) InitJson();
+        lock (this) InitJson();
         cache.Clear();
     }
 
@@ -109,7 +109,7 @@ public class JsonConfigProvider : IConfigProvider {
     public void Save() {
         if (!isDirty) return;
         isDirty = false;
-        lock (json) FileUtils.Write(filePath, json.Value.ToString(Formatting.Indented));
+        lock (this) FileUtils.Write(filePath, json.Value.ToString(Formatting.Indented));
     }
 }
 
